@@ -27,6 +27,8 @@ import type {
   UpdateCategoryInput,
   UpdateOperationInput,
 } from "@/lib/finance/types"
+import { normalizeAccountColor } from "@/lib/finance/account-colors"
+import { normalizeCategoryColor } from "@/lib/finance/category-colors"
 
 const STORAGE_KEY = "finance-mvp:state:v1"
 const AUTO_BACKUPS_KEY = "finance-mvp:auto-backups:v1"
@@ -77,6 +79,7 @@ function buildSystemCategory(kind: CategoryKind): Category {
     id: createId(),
     name: "Прочее",
     kind,
+    color: normalizeCategoryColor(undefined),
     isSystem: true,
     isArchived: false,
     createdAt: timestamp,
@@ -124,10 +127,18 @@ function normalizeState(raw: unknown): FinanceState {
   const maybeState = raw as Partial<FinanceState>
 
   const accounts = Array.isArray(maybeState.accounts)
-    ? (maybeState.accounts as Account[])
+    ? (maybeState.accounts as Account[]).map((account) => ({
+        ...account,
+        color: normalizeAccountColor(account.color),
+      }))
     : []
   const categories = Array.isArray(maybeState.categories)
-    ? ensureSystemCategories(maybeState.categories as Category[])
+    ? ensureSystemCategories(
+        (maybeState.categories as Category[]).map((category) => ({
+          ...category,
+          color: normalizeCategoryColor(category.color),
+        }))
+      )
     : ensureSystemCategories([])
   const transactions = Array.isArray(maybeState.transactions)
     ? (maybeState.transactions as Transaction[])
@@ -435,6 +446,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
         id: createId(),
         name,
         type: input.type,
+        color: normalizeAccountColor(input.color),
         startBalance: normalizeAccountStartBalance(input.type, input.startBalance),
         startDate: input.startDate || todayIsoDate(),
         isArchived: false,
@@ -490,6 +502,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
             ...account,
             name,
             type: input.type,
+            color: normalizeAccountColor(input.color),
             startBalance: normalizeAccountStartBalance(input.type, input.startBalance),
             startDate: input.startDate || todayIsoDate(),
             isArchived: input.isArchived,
@@ -561,6 +574,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
         id: createId(),
         name,
         kind: input.kind,
+        color: normalizeCategoryColor(input.color),
         isSystem: false,
         isArchived: false,
         createdAt: timestamp,
@@ -618,6 +632,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
             ? {
                 ...category,
                 name,
+                color: normalizeCategoryColor(input.color),
                 isArchived: input.isArchived,
                 updatedAt: nowIso(),
               }

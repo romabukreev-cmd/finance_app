@@ -2,6 +2,7 @@
 import { FinanceProvider } from "@/components/finance/finance-provider"
 import { MainNav } from "@/components/layout/main-nav"
 import { RegisterServiceWorker } from "@/components/pwa/register-sw"
+import { ThemeProvider } from "@/components/theme/theme-provider"
 import "./globals.css"
 
 export const metadata: Metadata = {
@@ -25,15 +26,17 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="ru" className="h-full antialiased">
+    <html lang="ru" className="h-full antialiased" suppressHydrationWarning>
       <body className="min-h-full bg-muted/30">
         <RegisterServiceWorker />
-        <FinanceProvider>
-          <MainNav />
-          <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col p-4 pb-24 md:p-8 md:pb-8">
-            {children}
-          </main>
-        </FinanceProvider>
+        <ThemeProvider>
+          <FinanceProvider>
+            <MainNav />
+            <main className="flex w-full flex-1 flex-col p-4 pb-24 md:p-8 md:pb-8">
+              {children}
+            </main>
+          </FinanceProvider>
+        </ThemeProvider>
       </body>
     </html>
   )

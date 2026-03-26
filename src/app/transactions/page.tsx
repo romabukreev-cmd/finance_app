@@ -33,26 +33,38 @@ import {
   currentMonth,
   formatMoney,
   monthKey,
-  todayIsoDate,
   transactionTypeLabel,
 } from "@/lib/finance/format"
+import { categoryBadgeClass, normalizeCategoryColor } from "@/lib/finance/category-colors"
 import type { TransactionType } from "@/lib/finance/types"
-
-type FormState = {
-  transactionDate: string
-  amount: string
-  accountId: string
-  categoryId: string
-  fromAccountId: string
-  toAccountId: string
-  note: string
-}
+import { buildOperationForm, defaultCategoryId, findName, type OperationFormState } from "@/lib/finance/helpers"
+import { cn } from "@/lib/utils"
 
 const TYPE_OPTIONS: Array<{ value: TransactionType; label: string }> = [
   { value: "income", label: "Доход" },
   { value: "expense", label: "Расход" },
   { value: "transfer", label: "Перевод" },
 ]
+
+function getTypeLabel(value: TransactionType | "all") {
+  if (value === "all") {
+    return "Все типы"
+  }
+
+  return TYPE_OPTIONS.find((option) => option.value === value)?.label ?? value
+}
+
+function typeBadgeClass(type: TransactionType) {
+  if (type === "income") {
+    return "border-emerald-400 bg-white text-emerald-700 dark:border-emerald-700 dark:bg-transparent dark:text-emerald-300"
+  }
+
+  if (type === "expense") {
+    return "border-rose-400 bg-white text-rose-700 dark:border-rose-700 dark:bg-transparent dark:text-rose-300"
+  }
+
+  return "border-border bg-muted text-foreground dark:bg-muted/40 dark:text-foreground"
+}
 
 export default function TransactionsPage() {
   const {
@@ -79,29 +91,8 @@ export default function TransactionsPage() {
     [categories]
   )
 
-  const defaultAccountId = activeAccounts[0]?.id ?? ""
-
-  const defaultCategoryId = (type: TransactionType) => {
-    if (type === "income") {
-      return incomeCategories[0]?.id ?? ""
-    }
-
-    if (type === "expense") {
-      return expenseCategories[0]?.id ?? ""
-    }
-
-    return ""
-  }
-
-  const buildInitialForm = (type: TransactionType): FormState => ({
-    transactionDate: todayIsoDate(),
-    amount: "",
-    accountId: defaultAccountId,
-    categoryId: defaultCategoryId(type),
-    fromAccountId: defaultAccountId,
-    toAccountId: activeAccounts[1]?.id ?? defaultAccountId,
-    note: "",
-  })
+  const buildInitialForm = (type: TransactionType): OperationFormState =>
+    buildOperationForm(type, activeAccounts, incomeCategories, expenseCategories)
 
   const [selectedMonth, setSelectedMonth] = useState(currentMonth())
   const [typeFilter, setTypeFilter] = useState<"all" | TransactionType>("all")
@@ -113,7 +104,7 @@ export default function TransactionsPage() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editingTransferId, setEditingTransferId] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
-  const [form, setForm] = useState<FormState>(buildInitialForm("expense"))
+  const [form, setForm] = useState<OperationFormState>(buildInitialForm("expense"))
 
   const filteredOperations = useMemo(() => {
     return displayTransactions.filter((operation) => {
@@ -149,11 +140,15 @@ export default function TransactionsPage() {
     })
   }, [accountFilter, categoryFilter, displayTransactions, selectedMonth, typeFilter])
 
-  const accountNameById = (accountId: string | null) =>
-    accounts.find((account) => account.id === accountId)?.name ?? "—"
+  const accountNameById = (id: string | null) => findName(accounts, id)
+  const categoryNameById = (id: string | null) => findName(categories, id)
+  const categoryById = (id: string | null) =>
+    categories.find((category) => category.id === id)
 
-  const categoryNameById = (categoryId: string | null) =>
-    categories.find((category) => category.id === categoryId)?.name ?? "—"
+  const accountFilterLabel =
+    accountFilter === "all" ? "Все счета" : accountNameById(accountFilter)
+  const categoryFilterLabel =
+    categoryFilter === "all" ? "Все категории" : categoryNameById(categoryFilter)
 
   const resetForm = () => {
     setFormMode("create")
@@ -197,7 +192,7 @@ export default function TransactionsPage() {
       transactionDate: operation.transactionDate,
       amount: String(operation.amount),
       accountId: operation.accountId ?? "",
-      categoryId: operation.categoryId ?? defaultCategoryId(operation.type),
+      categoryId: operation.categoryId ?? defaultCategoryId(operation.type, incomeCategories, expenseCategories),
       fromAccountId: "",
       toAccountId: "",
       note: operation.note ?? "",
@@ -310,7 +305,7 @@ export default function TransactionsPage() {
     setFormType(nextType)
     setForm((previous) => ({
       ...previous,
-      categoryId: defaultCategoryId(nextType),
+      categoryId: defaultCategoryId(nextType, incomeCategories, expenseCategories),
     }))
   }
 
@@ -328,211 +323,275 @@ export default function TransactionsPage() {
         }
       />
 
-      <Card>
-        <CardHeader>
-          <CardTitle>{formMode === "edit" ? "Редактировать" : "Новая операция"}</CardTitle>
-          <CardDescription>
-            Сумма вводится всегда положительной. Знак ставится автоматически по типу.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form className="grid gap-3 lg:grid-cols-6" onSubmit={handleSubmit}>
-            <div className="lg:col-span-2">
-              <Select
-                value={formType}
-                onValueChange={(value) =>
-                  value ? handleTypeChange(value as TransactionType) : undefined
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Тип операции" />
-                </SelectTrigger>
-                <SelectContent>
+      <section className="grid gap-4 xl:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>{formMode === "edit" ? "Редактировать" : "Новая операция"}</CardTitle>
+            <CardDescription>
+              Сумма вводится всегда положительной. Знак ставится автоматически по типу.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form className="space-y-3" onSubmit={handleSubmit}>
+              <div className="grid gap-3 lg:grid-cols-2">
+                <div className="grid grid-cols-3 gap-2 rounded-xl border bg-muted/30 p-1">
                   {TYPE_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
+                    <Button
+                      key={option.value}
+                      type="button"
+                      variant="ghost"
+                      className={cn(
+                        "h-14 text-xl font-semibold",
+                        option.value === "income"
+                          ? formType === option.value
+                            ? "bg-emerald-600 text-white hover:bg-emerald-700"
+                            : "text-emerald-700 hover:bg-emerald-100/80 dark:text-emerald-300 dark:hover:bg-emerald-950/40"
+                          : option.value === "expense"
+                            ? formType === option.value
+                              ? "bg-rose-600 text-white hover:bg-rose-700"
+                              : "text-rose-700 hover:bg-rose-100/80 dark:text-rose-300 dark:hover:bg-rose-950/40"
+                            : formType === option.value
+                              ? "bg-slate-600 text-white hover:bg-slate-700 dark:bg-slate-500 dark:hover:bg-slate-600"
+                              : "text-slate-700 hover:bg-slate-100/80 dark:text-slate-300 dark:hover:bg-slate-900/60"
+                      )}
+                      onClick={() => handleTypeChange(option.value)}
+                      disabled={formMode === "edit"}
+                    >
                       {option.label}
-                    </SelectItem>
+                    </Button>
                   ))}
-                </SelectContent>
-              </Select>
-            </div>
+                </div>
 
-            <Input
-              type="date"
-              value={form.transactionDate}
-              onChange={(event) =>
-                setForm((previous) => ({ ...previous, transactionDate: event.target.value }))
+                <Button
+                  type="submit"
+                  className="h-14 w-full gap-2 px-8 text-xl font-semibold"
+                >
+                  <Plus className="h-5 w-5" />
+                  {formMode === "edit" ? "Сохранить" : "Добавить"}
+                </Button>
+              </div>
+
+              {formType === "transfer" ? (
+                <>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <Select
+                      value={form.fromAccountId}
+                      onValueChange={(value) =>
+                        setForm((previous) => ({ ...previous, fromAccountId: value ?? "" }))
+                      }
+                    >
+                      <SelectTrigger className="w-full h-14 text-xl font-semibold">
+                        <SelectValue placeholder="Счет списания">
+                          {accountNameById(form.fromAccountId)}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {activeAccounts.map((account) => (
+                          <SelectItem key={account.id} value={account.id}>
+                            {account.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
+                    <Select
+                      value={form.toAccountId}
+                      onValueChange={(value) =>
+                        setForm((previous) => ({ ...previous, toAccountId: value ?? "" }))
+                      }
+                    >
+                      <SelectTrigger className="w-full h-14 text-xl font-semibold">
+                        <SelectValue placeholder="Счет зачисления">
+                          {accountNameById(form.toAccountId)}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {activeAccounts.map((account) => (
+                          <SelectItem key={account.id} value={account.id}>
+                            {account.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="Сумма"
+                    value={form.amount}
+                    className="h-14 text-2xl font-semibold"
+                    onChange={(event) =>
+                      setForm((previous) => ({ ...previous, amount: event.target.value }))
+                    }
+                  />
+
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <Input
+                      placeholder="Комментарий (опционально)"
+                      className="h-14"
+                      value={form.note}
+                      onChange={(event) =>
+                        setForm((previous) => ({ ...previous, note: event.target.value }))
+                      }
+                    />
+
+                    <Input
+                      type="date"
+                      className="h-14 text-lg"
+                      value={form.transactionDate}
+                      onChange={(event) =>
+                        setForm((previous) => ({ ...previous, transactionDate: event.target.value }))
+                      }
+                    />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="Сумма"
+                      value={form.amount}
+                      className="h-14 text-2xl font-semibold"
+                      onChange={(event) =>
+                        setForm((previous) => ({ ...previous, amount: event.target.value }))
+                      }
+                    />
+
+                    <Select
+                      value={form.categoryId}
+                      onValueChange={(value) =>
+                        setForm((previous) => ({ ...previous, categoryId: value ?? "" }))
+                      }
+                    >
+                      <SelectTrigger className="w-full h-14 text-xl font-semibold">
+                        <SelectValue placeholder="Категория">
+                          {categoryNameById(form.categoryId)}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(formType === "income" ? incomeCategories : expenseCategories).map((category) => (
+                          <SelectItem key={category.id} value={category.id}>
+                            {category.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <Input
+                      type="date"
+                      className="h-14 text-lg"
+                      value={form.transactionDate}
+                      onChange={(event) =>
+                        setForm((previous) => ({ ...previous, transactionDate: event.target.value }))
+                      }
+                    />
+
+                    <Select
+                      value={form.accountId}
+                      onValueChange={(value) =>
+                        setForm((previous) => ({ ...previous, accountId: value ?? "" }))
+                      }
+                    >
+                      <SelectTrigger className="w-full h-14 text-xl font-semibold">
+                        <SelectValue placeholder="Счет">
+                          {accountNameById(form.accountId)}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {activeAccounts.map((account) => (
+                          <SelectItem key={account.id} value={account.id}>
+                            {account.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <Input
+                    placeholder="Комментарий (опционально)"
+                    value={form.note}
+                    onChange={(event) =>
+                      setForm((previous) => ({ ...previous, note: event.target.value }))
+                    }
+                  />
+                </>
+              )}
+            </form>
+
+            {message ? <p className="mt-3 text-sm text-muted-foreground">{message}</p> : null}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Фильтры</CardTitle>
+            <CardDescription>Помесячный просмотр операций и быстрый поиск.</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-3 md:grid-cols-2">
+            <Input type="month" value={selectedMonth} onChange={(event) => setSelectedMonth(event.target.value)} />
+
+            <Select
+              value={typeFilter}
+              onValueChange={(value) =>
+                setTypeFilter((value ?? "all") as "all" | TransactionType)
               }
-            />
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Тип">
+                  {getTypeLabel(typeFilter)}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Все типы</SelectItem>
+                <SelectItem value="income">Доход</SelectItem>
+                <SelectItem value="expense">Расход</SelectItem>
+                <SelectItem value="transfer">Перевод</SelectItem>
+              </SelectContent>
+            </Select>
 
-            <Input
-              type="number"
-              step="0.01"
-              min="0"
-              placeholder="Сумма"
-              value={form.amount}
-              onChange={(event) =>
-                setForm((previous) => ({ ...previous, amount: event.target.value }))
-              }
-            />
+            <Select
+              value={accountFilter}
+              onValueChange={(value) => setAccountFilter(value ?? "all")}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Счет">{accountFilterLabel}</SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Все счета</SelectItem>
+                {accounts.map((account) => (
+                  <SelectItem key={account.id} value={account.id}>
+                    {account.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-            {formType === "transfer" ? (
-              <>
-                <Select
-                  value={form.fromAccountId}
-                  onValueChange={(value) =>
-                    setForm((previous) => ({ ...previous, fromAccountId: value ?? "" }))
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Счет списания" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {activeAccounts.map((account) => (
-                      <SelectItem key={account.id} value={account.id}>
-                        {account.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                <Select
-                  value={form.toAccountId}
-                  onValueChange={(value) =>
-                    setForm((previous) => ({ ...previous, toAccountId: value ?? "" }))
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Счет зачисления" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {activeAccounts.map((account) => (
-                      <SelectItem key={account.id} value={account.id}>
-                        {account.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </>
-            ) : (
-              <>
-                <Select
-                  value={form.accountId}
-                  onValueChange={(value) =>
-                    setForm((previous) => ({ ...previous, accountId: value ?? "" }))
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Счет" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {activeAccounts.map((account) => (
-                      <SelectItem key={account.id} value={account.id}>
-                        {account.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                <Select
-                  value={form.categoryId}
-                  onValueChange={(value) =>
-                    setForm((previous) => ({ ...previous, categoryId: value ?? "" }))
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Категория" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(formType === "income" ? incomeCategories : expenseCategories).map((category) => (
-                      <SelectItem key={category.id} value={category.id}>
-                        {category.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </>
-            )}
-
-            <Input
-              className="lg:col-span-4"
-              placeholder="Комментарий (опционально)"
-              value={form.note}
-              onChange={(event) =>
-                setForm((previous) => ({ ...previous, note: event.target.value }))
-              }
-            />
-
-            <Button type="submit" className="lg:col-span-2 gap-2">
-              <Plus className="h-4 w-4" />
-              {formMode === "edit" ? "Сохранить" : "Добавить"}
-            </Button>
-          </form>
-
-          {message ? <p className="mt-3 text-sm text-muted-foreground">{message}</p> : null}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Фильтры</CardTitle>
-          <CardDescription>Помесячный просмотр операций и быстрый поиск.</CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Input type="month" value={selectedMonth} onChange={(event) => setSelectedMonth(event.target.value)} />
-
-          <Select
-            value={typeFilter}
-            onValueChange={(value) =>
-              setTypeFilter((value ?? "all") as "all" | TransactionType)
-            }
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Тип" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Все типы</SelectItem>
-              <SelectItem value="income">Доход</SelectItem>
-              <SelectItem value="expense">Расход</SelectItem>
-              <SelectItem value="transfer">Перевод</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Select
-            value={accountFilter}
-            onValueChange={(value) => setAccountFilter(value ?? "all")}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Счет" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Все счета</SelectItem>
-              {accounts.map((account) => (
-                <SelectItem key={account.id} value={account.id}>
-                  {account.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select
-            value={categoryFilter}
-            onValueChange={(value) => setCategoryFilter(value ?? "all")}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Категория" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Все категории</SelectItem>
-              {categories.map((category) => (
-                <SelectItem key={category.id} value={category.id}>
-                  {category.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </CardContent>
-      </Card>
+            <Select
+              value={categoryFilter}
+              onValueChange={(value) => setCategoryFilter(value ?? "all")}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Категория">{categoryFilterLabel}</SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Все категории</SelectItem>
+                {categories.map((category) => (
+                  <SelectItem key={category.id} value={category.id}>
+                    {category.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </CardContent>
+        </Card>
+      </section>
 
       <Card>
         <CardHeader>
@@ -566,15 +625,7 @@ export default function TransactionsPage() {
                   <TableRow key={operation.id}>
                     <TableCell>{operation.transactionDate}</TableCell>
                     <TableCell>
-                      <Badge
-                        variant={
-                          operation.type === "income"
-                            ? "outline"
-                            : operation.type === "expense"
-                              ? "secondary"
-                              : "default"
-                        }
-                      >
+                      <Badge variant="outline" className={typeBadgeClass(operation.type)}>
                         {transactionTypeLabel(operation.type)}
                       </Badge>
                     </TableCell>
@@ -584,9 +635,28 @@ export default function TransactionsPage() {
                         : accountNameById(operation.accountId)}
                     </TableCell>
                     <TableCell>
-                      {operation.type === "transfer" ? "—" : categoryNameById(operation.categoryId)}
+                      {operation.type === "transfer" ? (
+                        "—"
+                      ) : (
+                        <Badge
+                          variant="outline"
+                          className={categoryBadgeClass(
+                            normalizeCategoryColor(categoryById(operation.categoryId)?.color)
+                          )}
+                        >
+                          {categoryNameById(operation.categoryId)}
+                        </Badge>
+                      )}
                     </TableCell>
-                    <TableCell className="text-right font-medium">
+                    <TableCell
+                      className={cn(
+                        "text-right font-medium",
+                        operation.type === "income"
+                          ? "text-emerald-600 dark:text-emerald-400"
+                          : "",
+                        operation.type === "expense" ? "text-rose-600 dark:text-rose-400" : ""
+                      )}
+                    >
                       {operation.type === "expense"
                         ? `−${formatMoney(operation.amount)}`
                         : operation.type === "income"

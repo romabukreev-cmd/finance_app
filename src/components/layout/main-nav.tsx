@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { BarChart3, List, Settings } from "lucide-react"
+import { ThemeToggle } from "@/components/theme/theme-toggle"
 import { cn } from "@/lib/utils"
 
 const navItems = [
@@ -17,13 +18,13 @@ export function MainNav() {
   return (
     <>
       <header className="sticky top-0 z-20 border-b bg-background/90 backdrop-blur">
-        <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4 md:px-8">
-          <div>
-            <p className="text-xs text-muted-foreground">Личный кабинет</p>
-            <p className="text-base font-semibold tracking-tight">Финансы MVP</p>
+        <div className="grid h-[72px] w-full grid-cols-[1fr_auto_1fr] items-center px-4 md:px-8">
+          <div className="justify-self-start">
+            <p className="text-sm text-muted-foreground">Личный кабинет</p>
+            <p className="text-lg font-semibold tracking-tight">Финансы MVP</p>
           </div>
 
-          <nav className="hidden items-center gap-2 md:flex">
+          <nav className="hidden items-center gap-2 justify-self-center md:flex">
             {navItems.map((item) => {
               const isActive = pathname === item.href
               return (
@@ -31,7 +32,7 @@ export function MainNav() {
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    "rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                    "rounded-md px-4 py-2.5 text-base font-medium transition-colors",
                     isActive
                       ? "bg-primary text-primary-foreground"
                       : "text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -42,6 +43,10 @@ export function MainNav() {
               )
             })}
           </nav>
+
+          <div className="justify-self-end">
+            <ThemeToggle />
+          </div>
         </div>
       </header>
 
@@ -55,13 +60,13 @@ export function MainNav() {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "flex flex-col items-center gap-1 rounded-md px-3 py-2 text-xs font-medium transition-colors",
+                  "flex flex-col items-center gap-1 rounded-md px-3 py-2.5 text-sm font-medium transition-colors",
                   isActive
                     ? "bg-primary text-primary-foreground"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground"
                 )}
               >
-                <Icon className="h-4 w-4" />
+                <Icon className="h-5 w-5" />
                 {item.label}
               </Link>
             )

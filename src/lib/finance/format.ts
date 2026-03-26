@@ -1,3 +1,5 @@
+﻿import type { AccountType, TransactionType } from "@/lib/finance/types"
+
 export function formatMoney(value: number) {
   return new Intl.NumberFormat("ru-RU", {
     style: "currency",
@@ -18,7 +20,7 @@ export function monthKey(dateValue: string) {
   return dateValue.slice(0, 7)
 }
 
-export function transactionTypeLabel(type: "income" | "expense" | "transfer") {
+export function transactionTypeLabel(type: TransactionType) {
   if (type === "income") {
     return "Доход"
   }
@@ -28,4 +30,12 @@ export function transactionTypeLabel(type: "income" | "expense" | "transfer") {
   }
 
   return "Перевод"
+}
+
+export function accountTypeLabel(type: AccountType) {
+  if (type === "debt") {
+    return "Долг"
+  }
+
+  return "Актив"
 }

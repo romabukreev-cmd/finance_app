@@ -1,4 +1,40 @@
 export type AccountType = "asset" | "debt"
+export type AccountColor =
+  | "slate"
+  | "stone"
+  | "red"
+  | "orange"
+  | "amber"
+  | "yellow"
+  | "lime"
+  | "green"
+  | "emerald"
+  | "teal"
+  | "cyan"
+  | "sky"
+  | "blue"
+  | "indigo"
+  | "violet"
+  | "purple"
+  | "pink"
+  | "rose"
+export type CategoryColor =
+  | "gray"
+  | "brown"
+  | "orange"
+  | "amber"
+  | "yellow"
+  | "lime"
+  | "green"
+  | "teal"
+  | "cyan"
+  | "sky"
+  | "blue"
+  | "indigo"
+  | "purple"
+  | "pink"
+  | "rose"
+  | "red"
 export type CategoryKind = "income" | "expense"
 export type TransactionType = "income" | "expense" | "transfer"
 export type TransferDirection = "out" | "in"
@@ -7,6 +43,7 @@ export type Account = {
   id: string
   name: string
   type: AccountType
+  color: AccountColor
   startBalance: number
   startDate: string
   isArchived: boolean
@@ -18,6 +55,7 @@ export type Category = {
   id: string
   name: string
   kind: CategoryKind
+  color: CategoryColor
   isSystem: boolean
   isArchived: boolean
   createdAt: string
@@ -77,6 +115,7 @@ export type ActionResult =
 export type CreateAccountInput = {
   name: string
   type: AccountType
+  color: AccountColor
   startBalance: number
   startDate: string
 }
@@ -85,6 +124,7 @@ export type UpdateAccountInput = {
   id: string
   name: string
   type: AccountType
+  color: AccountColor
   startBalance: number
   startDate: string
   isArchived: boolean
@@ -93,11 +133,13 @@ export type UpdateAccountInput = {
 export type CreateCategoryInput = {
   name: string
   kind: CategoryKind
+  color: CategoryColor
 }
 
 export type UpdateCategoryInput = {
   id: string
   name: string
+  color: CategoryColor
   isArchived: boolean
 }
 

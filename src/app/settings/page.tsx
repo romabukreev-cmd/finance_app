@@ -29,12 +29,25 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { formatMoney, todayIsoDate } from "@/lib/finance/format"
-import type { AccountType, CategoryKind } from "@/lib/finance/types"
+import {
+  ACCOUNT_COLOR_OPTIONS,
+  getAccountColorOption,
+  normalizeAccountColor,
+} from "@/lib/finance/account-colors"
+import {
+  CATEGORY_COLOR_OPTIONS,
+  categoryBadgeClass,
+  getCategoryColorOption,
+  normalizeCategoryColor,
+} from "@/lib/finance/category-colors"
+import { accountTypeLabel, formatMoney, todayIsoDate } from "@/lib/finance/format"
+import type { AccountColor, AccountType, CategoryColor, CategoryKind } from "@/lib/finance/types"
+import { cn } from "@/lib/utils"
 
 type AccountFormState = {
   name: string
   type: AccountType
+  color: AccountColor
   startBalance: string
   startDate: string
   isArchived: boolean
@@ -65,6 +78,7 @@ export default function SettingsPage() {
   const [accountForm, setAccountForm] = useState<AccountFormState>({
     name: "",
     type: "asset",
+    color: "slate",
     startBalance: "0",
     startDate: todayIsoDate(),
     isArchived: false,
@@ -72,10 +86,12 @@ export default function SettingsPage() {
 
   const [categoryName, setCategoryName] = useState("")
   const [categoryKind, setCategoryKind] = useState<CategoryKind>("expense")
+  const [categoryColor, setCategoryColor] = useState<CategoryColor>("gray")
 
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null)
   const [editingCategoryName, setEditingCategoryName] = useState("")
   const [editingCategoryArchived, setEditingCategoryArchived] = useState(false)
+  const [editingCategoryColor, setEditingCategoryColor] = useState<CategoryColor>("gray")
 
   const incomeCategories = useMemo(
     () => categories.filter((category) => category.kind === "income"),
@@ -165,6 +181,7 @@ export default function SettingsPage() {
     setAccountForm({
       name: "",
       type: "asset",
+      color: "slate",
       startBalance: "0",
       startDate: todayIsoDate(),
       isArchived: false,
@@ -187,6 +204,7 @@ export default function SettingsPage() {
             id: editingAccountId,
             name: accountForm.name,
             type: accountForm.type,
+            color: accountForm.color,
             startBalance,
             startDate: accountForm.startDate,
             isArchived: accountForm.isArchived,
@@ -194,6 +212,7 @@ export default function SettingsPage() {
         : addAccount({
             name: accountForm.name,
             type: accountForm.type,
+            color: accountForm.color,
             startBalance,
             startDate: accountForm.startDate,
           })
@@ -218,6 +237,7 @@ export default function SettingsPage() {
     setAccountForm({
       name: account.name,
       type: account.type,
+      color: normalizeAccountColor(account.color),
       startBalance: String(Math.abs(account.startBalance)),
       startDate: account.startDate,
       isArchived: account.isArchived,
@@ -241,7 +261,11 @@ export default function SettingsPage() {
   const handleAddCategory = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
-    const result = addCategory({ name: categoryName, kind: categoryKind })
+    const result = addCategory({
+      name: categoryName,
+      kind: categoryKind,
+      color: categoryColor,
+    })
 
     if (!result.ok) {
       setCategoryMessage(result.error)
@@ -249,6 +273,7 @@ export default function SettingsPage() {
     }
 
     setCategoryName("")
+    setCategoryColor("gray")
     setCategoryMessage("Категория добавлена.")
   }
 
@@ -262,6 +287,7 @@ export default function SettingsPage() {
     setEditingCategoryId(category.id)
     setEditingCategoryName(category.name)
     setEditingCategoryArchived(category.isArchived)
+    setEditingCategoryColor(normalizeCategoryColor(category.color))
     setCategoryMessage(null)
   }
 
@@ -273,6 +299,7 @@ export default function SettingsPage() {
     const result = updateCategory({
       id: editingCategoryId,
       name: editingCategoryName,
+      color: editingCategoryColor,
       isArchived: editingCategoryArchived,
     })
 
@@ -285,6 +312,7 @@ export default function SettingsPage() {
     setEditingCategoryId(null)
     setEditingCategoryName("")
     setEditingCategoryArchived(false)
+    setEditingCategoryColor("gray")
   }
 
   const handleDeleteCategory = (categoryId: string) => {
@@ -299,6 +327,7 @@ export default function SettingsPage() {
       setEditingCategoryId(null)
       setEditingCategoryName("")
       setEditingCategoryArchived(false)
+      setEditingCategoryColor("gray")
     }
   }
 
@@ -315,6 +344,41 @@ export default function SettingsPage() {
                 value={editingCategoryName}
                 onChange={(event) => setEditingCategoryName(event.target.value)}
               />
+              <Select
+                value={editingCategoryColor}
+                onValueChange={(value) =>
+                  setEditingCategoryColor(normalizeCategoryColor(value))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Цвет">
+                    <span className="inline-flex items-center gap-2">
+                      <span
+                        className={cn(
+                          "size-3.5 rounded-full border border-black/10 dark:border-white/20",
+                          getCategoryColorOption(editingCategoryColor).swatchClass
+                        )}
+                      />
+                      {getCategoryColorOption(editingCategoryColor).label}
+                    </span>
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {CATEGORY_COLOR_OPTIONS.map((item) => (
+                    <SelectItem key={item.value} value={item.value}>
+                      <span className="inline-flex items-center gap-2">
+                        <span
+                          className={cn(
+                            "size-3.5 rounded-full border border-black/10 dark:border-white/20",
+                            item.swatchClass
+                          )}
+                        />
+                        {item.label}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <label className="flex items-center gap-2 text-sm text-muted-foreground">
                 <input
                   type="checkbox"
@@ -330,7 +394,12 @@ export default function SettingsPage() {
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => setEditingCategoryId(null)}
+                  onClick={() => {
+                    setEditingCategoryId(null)
+                    setEditingCategoryName("")
+                    setEditingCategoryArchived(false)
+                    setEditingCategoryColor("gray")
+                  }}
                 >
                   Отмена
                 </Button>
@@ -339,7 +408,12 @@ export default function SettingsPage() {
           ) : (
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">
-                <p className="font-medium">{category.name}</p>
+                <Badge
+                  variant="outline"
+                  className={categoryBadgeClass(normalizeCategoryColor(category.color))}
+                >
+                  {category.name}
+                </Badge>
                 {category.isSystem ? <Badge>Системная</Badge> : null}
                 {category.isArchived ? <Badge variant="secondary">Архив</Badge> : null}
               </div>
@@ -418,143 +492,186 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>{editingAccountId ? "Редактировать счет" : "Добавить счет"}</CardTitle>
-          <CardDescription>
-            Для долга введенная сумма автоматически сохранится как отрицательная.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form className="grid gap-3 md:grid-cols-5" onSubmit={handleAccountSubmit}>
-            <Input
-              placeholder="Название"
-              value={accountForm.name}
-              onChange={(event) =>
-                setAccountForm((previous) => ({ ...previous, name: event.target.value }))
-              }
-            />
+      <div className="grid gap-4 xl:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>{editingAccountId ? "Редактировать счет" : "Добавить счет"}</CardTitle>
+            <CardDescription>
+              Для долга введенная сумма автоматически сохранится как отрицательная.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form className="grid gap-3 md:grid-cols-2 xl:grid-cols-3" onSubmit={handleAccountSubmit}>
+              <Input
+                placeholder="Название"
+                value={accountForm.name}
+                onChange={(event) =>
+                  setAccountForm((previous) => ({ ...previous, name: event.target.value }))
+                }
+              />
 
-            <Select
-              value={accountForm.type}
-              onValueChange={(value) =>
-                setAccountForm((previous) => ({
-                  ...previous,
-                  type: (value ?? "asset") as AccountType,
-                }))
-              }
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Тип" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="asset">Актив</SelectItem>
-                <SelectItem value="debt">Долг</SelectItem>
-              </SelectContent>
-            </Select>
+              <Select
+                value={accountForm.color}
+                onValueChange={(value) =>
+                  setAccountForm((previous) => ({
+                    ...previous,
+                    color: normalizeAccountColor(value),
+                  }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Цвет карточки">
+                    <span className="inline-flex items-center gap-2">
+                      <span
+                        className={cn(
+                          "size-3.5 rounded-full border border-black/10 dark:border-white/20",
+                          getAccountColorOption(accountForm.color).swatchClass
+                        )}
+                      />
+                      {getAccountColorOption(accountForm.color).label}
+                    </span>
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {ACCOUNT_COLOR_OPTIONS.map((item) => (
+                    <SelectItem key={item.value} value={item.value}>
+                      <span className="inline-flex items-center gap-2">
+                        <span
+                          className={cn(
+                            "size-3.5 rounded-full border border-black/10 dark:border-white/20",
+                            item.swatchClass
+                          )}
+                        />
+                        {item.label}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
 
-            <Input
-              type="number"
-              step="0.01"
-              min="0"
-              placeholder="Стартовый остаток"
-              value={accountForm.startBalance}
-              onChange={(event) =>
-                setAccountForm((previous) => ({ ...previous, startBalance: event.target.value }))
-              }
-            />
+              <Select
+                value={accountForm.type}
+                onValueChange={(value) =>
+                  setAccountForm((previous) => ({
+                    ...previous,
+                    type: (value ?? "asset") as AccountType,
+                  }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Тип">
+                    {accountTypeLabel(accountForm.type)}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="asset">Актив</SelectItem>
+                  <SelectItem value="debt">Долг</SelectItem>
+                </SelectContent>
+              </Select>
 
-            <Input
-              type="date"
-              value={accountForm.startDate}
-              onChange={(event) =>
-                setAccountForm((previous) => ({ ...previous, startDate: event.target.value }))
-              }
-            />
+              <Input
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="Стартовый остаток"
+                value={accountForm.startBalance}
+                onChange={(event) =>
+                  setAccountForm((previous) => ({ ...previous, startBalance: event.target.value }))
+                }
+              />
 
-            <Button type="submit" className="gap-2">
-              <Plus className="h-4 w-4" />
-              {editingAccountId ? "Сохранить" : "Добавить"}
-            </Button>
-          </form>
+              <Input
+                type="date"
+                value={accountForm.startDate}
+                onChange={(event) =>
+                  setAccountForm((previous) => ({ ...previous, startDate: event.target.value }))
+                }
+              />
 
-          {editingAccountId ? (
-            <div className="mt-2 flex items-center justify-between rounded-md border p-2 text-sm">
-              <label className="flex items-center gap-2 text-muted-foreground">
-                <input
-                  type="checkbox"
-                  checked={accountForm.isArchived}
-                  onChange={(event) =>
-                    setAccountForm((previous) => ({ ...previous, isArchived: event.target.checked }))
-                  }
-                />
-                <Archive className="h-4 w-4" />
-                Счет в архиве
-              </label>
-              <Button variant="outline" size="sm" onClick={resetAccountForm}>
-                Отмена
+              <Button type="submit" className="gap-2">
+                <Plus className="h-4 w-4" />
+                {editingAccountId ? "Сохранить" : "Добавить"}
               </Button>
-            </div>
-          ) : null}
+            </form>
 
-          {accountMessage ? (
-            <p className="mt-3 text-sm text-muted-foreground">{accountMessage}</p>
-          ) : null}
-        </CardContent>
-      </Card>
+            {editingAccountId ? (
+              <div className="mt-2 flex items-center justify-between rounded-md border p-2 text-sm">
+                <label className="flex items-center gap-2 text-muted-foreground">
+                  <input
+                    type="checkbox"
+                    checked={accountForm.isArchived}
+                    onChange={(event) =>
+                      setAccountForm((previous) => ({ ...previous, isArchived: event.target.checked }))
+                    }
+                  />
+                  <Archive className="h-4 w-4" />
+                  Счет в архиве
+                </label>
+                <Button variant="outline" size="sm" onClick={resetAccountForm}>
+                  Отмена
+                </Button>
+              </div>
+            ) : null}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Счета</CardTitle>
-          <CardDescription>
-            Удаление счета возможно только если к нему нет привязанных операций.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Название</TableHead>
-                <TableHead>Тип</TableHead>
-                <TableHead>Старт</TableHead>
-                <TableHead>Дата старта</TableHead>
-                <TableHead className="text-right">Действия</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {accounts.length === 0 ? (
+            {accountMessage ? (
+              <p className="mt-3 text-sm text-muted-foreground">{accountMessage}</p>
+            ) : null}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Счета</CardTitle>
+            <CardDescription>
+              Удаление счета возможно только если к нему нет привязанных операций.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="overflow-x-auto">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground">
-                    Пока нет счетов.
-                  </TableCell>
+                  <TableHead>Название</TableHead>
+                  <TableHead>Тип</TableHead>
+                  <TableHead>Старт</TableHead>
+                  <TableHead>Дата старта</TableHead>
+                  <TableHead className="text-right">Действия</TableHead>
                 </TableRow>
-              ) : (
-                accounts.map((account) => (
-                  <TableRow key={account.id}>
-                    <TableCell className="font-medium">{account.name}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{account.type === "debt" ? "Долг" : "Актив"}</Badge>
-                      {account.isArchived ? <Badge className="ml-2" variant="secondary">Архив</Badge> : null}
-                    </TableCell>
-                    <TableCell>{formatMoney(account.startBalance)}</TableCell>
-                    <TableCell>{account.startDate}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button variant="ghost" size="icon" onClick={() => startAccountEdit(account.id)}>
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => handleDeleteAccount(account.id)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
+              </TableHeader>
+              <TableBody>
+                {accounts.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center text-muted-foreground">
+                      Пока нет счетов.
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+                ) : (
+                  accounts.map((account) => (
+                    <TableRow key={account.id}>
+                      <TableCell className="font-medium">{account.name}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{accountTypeLabel(account.type)}</Badge>
+                        {account.isArchived ? <Badge className="ml-2" variant="secondary">Архив</Badge> : null}
+                      </TableCell>
+                      <TableCell>{formatMoney(account.startBalance)}</TableCell>
+                      <TableCell>{account.startDate}</TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1">
+                          <Button variant="ghost" size="icon" onClick={() => startAccountEdit(account.id)}>
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => handleDeleteAccount(account.id)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      </div>
 
       <Card>
         <CardHeader>
@@ -578,7 +695,9 @@ export default function SettingsPage() {
               }
             >
               <SelectTrigger>
-                <SelectValue placeholder="Тип категории" />
+                <SelectValue placeholder="Тип категории">
+                  {categoryKind === "income" ? "Доход" : "Расход"}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="expense">Расход</SelectItem>
@@ -586,7 +705,41 @@ export default function SettingsPage() {
               </SelectContent>
             </Select>
 
-            <Button type="submit" className="gap-2 md:col-span-2">
+            <Select
+              value={categoryColor}
+              onValueChange={(value) => setCategoryColor(normalizeCategoryColor(value))}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Цвет категории">
+                  <span className="inline-flex items-center gap-2">
+                    <span
+                      className={cn(
+                        "size-3.5 rounded-full border border-black/10 dark:border-white/20",
+                        getCategoryColorOption(categoryColor).swatchClass
+                      )}
+                    />
+                    {getCategoryColorOption(categoryColor).label}
+                  </span>
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {CATEGORY_COLOR_OPTIONS.map((item) => (
+                  <SelectItem key={item.value} value={item.value}>
+                    <span className="inline-flex items-center gap-2">
+                      <span
+                        className={cn(
+                          "size-3.5 rounded-full border border-black/10 dark:border-white/20",
+                          item.swatchClass
+                        )}
+                      />
+                      {item.label}
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Button type="submit" className="gap-2 md:justify-self-end md:px-6">
               <Plus className="h-4 w-4" />
               Добавить категорию
             </Button>
