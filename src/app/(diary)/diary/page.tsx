@@ -135,8 +135,7 @@ function RightPanel({
   return (
     <div className="space-y-4">
       {/* Закладка */}
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-muted-foreground">{formatDateRu(date)}</span>
+      <div className="flex justify-end">
         <Button
           variant="ghost"
           size="icon"

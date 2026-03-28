@@ -61,7 +61,13 @@ function loadState(): DiaryState {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return defaultState()
-    return JSON.parse(raw) as DiaryState
+    const saved = JSON.parse(raw) as DiaryState
+    const defaults = defaultState()
+    return {
+      ...saved,
+      categories: defaults.categories,
+      workDirections: defaults.workDirections,
+    }
   } catch {
     return defaultState()
   }
