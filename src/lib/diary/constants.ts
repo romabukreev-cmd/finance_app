@@ -11,16 +11,21 @@ export const DEFAULT_BUFFS: BuffDebuff[] = [
 ]
 
 export const DEFAULT_DEBUFFS: BuffDebuff[] = [
-  { id: "debuff-home", name: "Дома весь день", emoji: "🏠", type: "debuff" },
-  { id: "debuff-scroll", name: "Залипал в ленте", emoji: "📱", type: "debuff" },
+  { id: "debuff-home", name: "Мало кислорода", emoji: "🏠", type: "debuff" },
+  { id: "debuff-scroll", name: "Думскролл", emoji: "📱", type: "debuff" },
   { id: "debuff-junk", name: "Фастфуд", emoji: "🍔", type: "debuff" },
+  { id: "debuff-sweet", name: "Сладкое", emoji: "🍬", type: "debuff" },
+  { id: "debuff-sleep", name: "Мало сна", emoji: "😴", type: "debuff" },
+  { id: "debuff-night", name: "Ночной сёрфинг", emoji: "🌙", type: "debuff" },
 ]
 
 export const DEFAULT_WORK_DIRECTIONS: WorkDirection[] = [
   { id: "dir-studio", name: "Студия", color: "emerald" },
-  { id: "dir-media", name: "Медийка", color: "violet" },
-  { id: "dir-learning", name: "Обучения", color: "amber" },
   { id: "dir-dev", name: "Разработка", color: "sky" },
+  { id: "dir-ai", name: "ИИ", color: "violet" },
+  { id: "dir-media", name: "Медийка", color: "orange" },
+  { id: "dir-self", name: "Саморазвитие", color: "teal" },
+  { id: "dir-learning", name: "Обучение", color: "amber" },
 ]
 
 export const DEFAULT_DIARY_CATEGORIES = [
