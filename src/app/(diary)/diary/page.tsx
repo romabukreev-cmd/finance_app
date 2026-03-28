@@ -193,7 +193,7 @@ function RightPanel({
             {totalHours}ч
           </span>
         </div>
-        <div className="grid grid-cols-2 gap-1.5">
+        <div className="grid grid-cols-3 gap-1.5">
           {workDirections.map((dir) => {
             const log = entry.workLogs.find((w) => w.directionId === dir.id)
             const hours = log?.hours ?? 0
@@ -202,23 +202,30 @@ function RightPanel({
               <div
                 key={dir.id}
                 className={cn(
-                  "flex items-center gap-2 rounded-lg border p-2",
+                  "flex flex-col items-center rounded-xl border py-2",
                   hours > 0 ? `${colors.bg} ${colors.border}` : "border-border"
                 )}
               >
-                <span className={cn("text-xs font-medium truncate", hours > 0 ? colors.text : "text-muted-foreground")}>
+                <span className={cn("text-[10px] font-medium", hours > 0 ? colors.text : "text-muted-foreground")}>
                   {dir.name}
                 </span>
-                <Input
-                  type="number"
-                  min="0"
-                  max="24"
-                  step="0.5"
-                  value={hours || ""}
-                  placeholder="0"
-                  className="ml-auto h-7 w-14 text-center text-xs"
-                  onChange={(e) => setWorkLog(date, dir.id, Number(e.target.value) || 0)}
-                />
+                <button
+                  type="button"
+                  className="mt-1 text-xs text-muted-foreground hover:text-foreground"
+                  onClick={() => setWorkLog(date, dir.id, Math.min(24, hours + 0.5))}
+                >
+                  ▲
+                </button>
+                <span className={cn("text-lg font-bold tabular-nums", hours > 0 ? colors.text : "text-muted-foreground/40")}>
+                  {hours}
+                </span>
+                <button
+                  type="button"
+                  className="text-xs text-muted-foreground hover:text-foreground"
+                  onClick={() => setWorkLog(date, dir.id, Math.max(0, hours - 0.5))}
+                >
+                  ▼
+                </button>
               </div>
             )
           })}
