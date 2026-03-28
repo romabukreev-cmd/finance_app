@@ -273,5 +273,5 @@ export function DiaryProvider({ children }: { children: ReactNode }) {
     ]
   )
 
-  return <DiaryContext value={value}>{children}</DiaryContext>
+  return <DiaryContext.Provider value={value}>{children}</DiaryContext.Provider>
 }
