@@ -8,6 +8,7 @@ export const DEFAULT_BUFFS: BuffDebuff[] = [
   { id: "buff-food", name: "Здоровое питание", emoji: "🥗", type: "buff" },
   { id: "buff-workout", name: "Тренировка", emoji: "💪", type: "buff" },
   { id: "buff-read", name: "Чтение", emoji: "📖", type: "buff" },
+  { id: "buff-vitamins", name: "Витамины", emoji: "💊", type: "buff" },
 ]
 
 export const DEFAULT_DEBUFFS: BuffDebuff[] = [
