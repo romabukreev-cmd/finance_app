@@ -1,31 +1,58 @@
-﻿"use client"
+"use client"
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { BarChart3, List, Settings } from "lucide-react"
+import { BarChart3, BookOpen, Home, List, Settings } from "lucide-react"
 import { ThemeToggle } from "@/components/theme/theme-toggle"
 import { cn } from "@/lib/utils"
 
-const navItems = [
+const financeNav = [
   { href: "/dashboard", label: "Дашборд", icon: BarChart3 },
   { href: "/transactions", label: "Операции", icon: List },
   { href: "/settings", label: "Настройки", icon: Settings },
 ]
 
+const diaryNav = [
+  { href: "/diary", label: "Дневник", icon: BookOpen },
+]
+
+function useModuleNav() {
+  const pathname = usePathname()
+
+  if (pathname === "/") return null
+
+  if (pathname.startsWith("/diary")) {
+    return { title: "Дневник", items: diaryNav }
+  }
+
+  return { title: "Финансы", items: financeNav }
+}
+
 export function MainNav() {
   const pathname = usePathname()
+  const module = useModuleNav()
+
+  if (!module) return null
 
   return (
     <>
       <header className="sticky top-0 z-20 border-b bg-background/90 backdrop-blur">
         <div className="grid h-[72px] w-full grid-cols-[1fr_auto_1fr] items-center px-4 md:px-8">
-          <div className="justify-self-start">
-            <p className="text-sm text-muted-foreground">Личный кабинет</p>
-            <p className="text-lg font-semibold tracking-tight">Финансы MVP</p>
+          <div className="flex items-center gap-3 justify-self-start">
+            <Link
+              href="/"
+              className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+              <Home className="h-5 w-5" />
+            </Link>
+            <div>
+              <p className="text-sm text-muted-foreground">Личный кабинет</p>
+              <p className="text-lg font-semibold tracking-tight">{module.title}</p>
+            </div>
           </div>
 
           <nav className="hidden items-center gap-2 justify-self-center md:flex">
-            {navItems.map((item) => {
+            {module.items.map((item) => {
               const isActive = pathname === item.href
               return (
                 <Link
@@ -51,8 +78,18 @@ export function MainNav() {
       </header>
 
       <nav className="fixed inset-x-0 bottom-0 z-20 border-t bg-background/95 p-2 backdrop-blur md:hidden">
-        <div className="mx-auto grid max-w-md grid-cols-3 gap-2">
-          {navItems.map((item) => {
+        <div className={cn(
+          "mx-auto grid max-w-md gap-2",
+          `grid-cols-${module.items.length + 1}`
+        )}>
+          <Link
+            href="/"
+            className="flex flex-col items-center gap-1 rounded-md px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            <Home className="h-5 w-5" />
+            Главная
+          </Link>
+          {module.items.map((item) => {
             const isActive = pathname === item.href
             const Icon = item.icon
             return (

@@ -1,14 +1,13 @@
-﻿import type { Metadata } from "next"
-import { FinanceProvider } from "@/components/finance/finance-provider"
+import type { Metadata } from "next"
 import { MainNav } from "@/components/layout/main-nav"
 import { RegisterServiceWorker } from "@/components/pwa/register-sw"
 import { ThemeProvider } from "@/components/theme/theme-provider"
 import "./globals.css"
 
 export const metadata: Metadata = {
-  title: "Финансы MVP",
-  description: "Личный учёт финансов: счета, операции и аналитика по месяцам",
-  applicationName: "Финансы MVP",
+  title: "Личный кабинет",
+  description: "Финансы, дневник, планер — всё в одном месте",
+  applicationName: "Личный кабинет",
   icons: {
     icon: [
       { url: "/icons/pwa-192.png", sizes: "192x192", type: "image/png" },
@@ -30,12 +29,10 @@ export default function RootLayout({
       <body className="min-h-full bg-muted/30">
         <RegisterServiceWorker />
         <ThemeProvider>
-          <FinanceProvider>
-            <MainNav />
-            <main className="flex w-full flex-1 flex-col p-4 pb-24 md:p-8 md:pb-8">
-              {children}
-            </main>
-          </FinanceProvider>
+          <MainNav />
+          <main className="flex w-full flex-1 flex-col p-4 pb-24 md:p-8 md:pb-8">
+            {children}
+          </main>
         </ThemeProvider>
       </body>
     </html>
