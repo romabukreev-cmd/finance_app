@@ -29,12 +29,12 @@ export const DEFAULT_WORK_DIRECTIONS: WorkDirection[] = [
 ]
 
 export const DEFAULT_DIARY_CATEGORIES = [
+  { id: "dcat-studio", name: "Студия", color: "emerald" },
   { id: "dcat-idea", name: "Идея", color: "amber" },
-  { id: "dcat-work", name: "Работа", color: "emerald" },
+  { id: "dcat-auto", name: "Автоматизации", color: "sky" },
+  { id: "dcat-read", name: "Чтение", color: "indigo" },
+  { id: "dcat-media", name: "Медийка", color: "orange" },
   { id: "dcat-personal", name: "Личное", color: "violet" },
-  { id: "dcat-health", name: "Здоровье", color: "teal" },
-  { id: "dcat-finance", name: "Финансы", color: "sky" },
-  { id: "dcat-learning", name: "Обучение", color: "indigo" },
 ]
 
 export const DIARY_CATEGORY_COLORS: Record<string, { bg: string; text: string; border: string }> = {
