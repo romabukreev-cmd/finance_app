@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { Component, useMemo, useState, type ReactNode } from "react"
 import {
   Bookmark,
   ChevronDown,
@@ -428,6 +428,35 @@ function DayCard({ date }: { date: string }) {
   )
 }
 
+class DiaryErrorBoundary extends Component<
+  { children: ReactNode },
+  { error: Error | null }
+> {
+  constructor(props: { children: ReactNode }) {
+    super(props)
+    this.state = { error: null }
+  }
+  static getDerivedStateFromError(error: Error) {
+    return { error }
+  }
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="mx-auto max-w-3xl space-y-4 p-8">
+          <h1 className="text-2xl font-bold text-rose-600">Ошибка в дневнике</h1>
+          <pre className="whitespace-pre-wrap rounded-lg bg-muted p-4 text-sm">
+            {this.state.error.message}
+          </pre>
+          <pre className="whitespace-pre-wrap rounded-lg bg-muted p-4 text-xs text-muted-foreground">
+            {this.state.error.stack}
+          </pre>
+        </div>
+      )
+    }
+    return this.props.children
+  }
+}
+
 export default function DiaryPage() {
   const { hydrated, entries } = useDiary()
 
@@ -448,22 +477,24 @@ export default function DiaryPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
-      <PageHeader
-        title="Дневник"
-        description="Мысли, привычки и рабочие часы — каждый день."
-      />
+    <DiaryErrorBoundary>
+      <div className="mx-auto max-w-3xl space-y-6">
+        <PageHeader
+          title="Дневник"
+          description="Мысли, привычки и рабочие часы — каждый день."
+        />
 
-      <TodayBlock />
+        <TodayBlock />
 
-      {pastDates.length > 0 && (
-        <div className="space-y-3">
-          <h2 className="text-lg font-semibold text-muted-foreground">История</h2>
-          {pastDates.map((date) => (
-            <DayCard key={date} date={date} />
-          ))}
-        </div>
-      )}
-    </div>
+        {pastDates.length > 0 && (
+          <div className="space-y-3">
+            <h2 className="text-lg font-semibold text-muted-foreground">История</h2>
+            {pastDates.map((date) => (
+              <DayCard key={date} date={date} />
+            ))}
+          </div>
+        )}
+      </div>
+    </DiaryErrorBoundary>
   )
 }
