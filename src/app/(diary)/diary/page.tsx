@@ -24,6 +24,22 @@ import { DIARY_CATEGORY_COLORS } from "@/lib/diary/constants"
 import { todayIsoDate } from "@/lib/finance/format"
 import { cn } from "@/lib/utils"
 
+function renderFormattedText(text: string) {
+  const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*|~[^~]+~)/g)
+  return parts.map((part, i) => {
+    if (part.startsWith("**") && part.endsWith("**")) {
+      return <strong key={i}>{part.slice(2, -2)}</strong>
+    }
+    if (part.startsWith("*") && part.endsWith("*")) {
+      return <em key={i}>{part.slice(1, -1)}</em>
+    }
+    if (part.startsWith("~") && part.endsWith("~")) {
+      return <span key={i} className="text-muted-foreground/60">{part.slice(1, -1)}</span>
+    }
+    return part
+  })
+}
+
 function formatDateRu(iso: string) {
   const d = new Date(iso + "T00:00:00")
   return d.toLocaleDateString("ru-RU", {
@@ -181,7 +197,7 @@ function TodayBlock() {
                       })}
                     </div>
                   )}
-                  <p className="text-sm whitespace-pre-wrap">{thought.text}</p>
+                  <p className="text-sm whitespace-pre-wrap">{renderFormattedText(thought.text)}</p>
                 </div>
                 <Button
                   variant="ghost"
@@ -211,15 +227,20 @@ function TodayBlock() {
                 <textarea
                   placeholder="Запиши мысль или идею..."
                   value={newText}
-                  onChange={(e) => setNewText(e.target.value)}
+                  onChange={(e) => {
+                    setNewText(e.target.value)
+                    const el = e.target
+                    el.style.height = "auto"
+                    el.style.height = `${el.scrollHeight}px`
+                  }}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) {
                       e.preventDefault()
                       handleAddThought()
                     }
                   }}
-                  rows={2}
-                  className="flex-1 resize-none rounded-lg border border-input bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
+                  rows={4}
+                  className="flex-1 resize-none overflow-hidden rounded-lg border border-input bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
                 />
                 <Button size="icon" onClick={handleAddThought} disabled={!newText.trim()} className="self-end">
                   <Plus className="h-4 w-4" />
