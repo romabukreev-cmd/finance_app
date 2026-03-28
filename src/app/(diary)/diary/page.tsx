@@ -134,22 +134,6 @@ function RightPanel({
 
   return (
     <div className="space-y-4">
-      {/* Закладка */}
-      <div className="flex justify-end">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => toggleBookmark(date)}
-          className={cn("h-8 w-8", entry.isBookmarked ? "text-amber-500" : "text-muted-foreground")}
-        >
-          {entry.isBookmarked ? (
-            <Flame className="h-4 w-4 fill-current" />
-          ) : (
-            <Bookmark className="h-4 w-4" />
-          )}
-        </Button>
-      </div>
-
       {/* Бафы + Дебафы */}
       <div className="flex items-start gap-4">
         <div className="flex-1 space-y-1.5">
@@ -193,39 +177,71 @@ function RightPanel({
             {totalHours}ч
           </span>
         </div>
-        <div className="grid grid-cols-3 gap-1.5">
+        <div className="grid grid-cols-2 gap-1.5">
           {workDirections.map((dir) => {
             const log = entry.workLogs.find((w) => w.directionId === dir.id)
             const hours = log?.hours ?? 0
+            const h = Math.floor(hours)
+            const m = Math.round((hours - h) * 60)
             const colors = DIARY_CATEGORY_COLORS[dir.color] ?? DIARY_CATEGORY_COLORS.slate
             return (
               <div
                 key={dir.id}
                 className={cn(
-                  "flex flex-col items-center rounded-xl border py-2",
+                  "flex items-center gap-2 rounded-lg border p-2",
                   hours > 0 ? `${colors.bg} ${colors.border}` : "border-border"
                 )}
               >
-                <span className={cn("text-[10px] font-medium", hours > 0 ? colors.text : "text-muted-foreground")}>
+                <span className={cn("text-xs font-medium truncate", hours > 0 ? colors.text : "text-muted-foreground")}>
                   {dir.name}
                 </span>
-                <button
-                  type="button"
-                  className="mt-1 text-xs text-muted-foreground hover:text-foreground"
-                  onClick={() => setWorkLog(date, dir.id, Math.min(24, hours + 0.5))}
-                >
-                  ▲
-                </button>
-                <span className={cn("text-lg font-bold tabular-nums", hours > 0 ? colors.text : "text-muted-foreground/40")}>
-                  {hours}
-                </span>
-                <button
-                  type="button"
-                  className="text-xs text-muted-foreground hover:text-foreground"
-                  onClick={() => setWorkLog(date, dir.id, Math.max(0, hours - 0.5))}
-                >
-                  ▼
-                </button>
+                <div className="ml-auto flex items-center gap-0.5">
+                  <input
+                    type="number"
+                    min="0"
+                    max="23"
+                    value={h}
+                    className={cn(
+                      "h-8 w-9 rounded-md border border-input bg-transparent text-center text-sm font-bold tabular-nums outline-none focus:border-ring focus:ring-2 focus:ring-ring/50 dark:bg-input/30",
+                      hours > 0 ? colors.text : ""
+                    )}
+                    onWheel={(e) => {
+                      e.preventDefault()
+                      const delta = e.deltaY < 0 ? 1 : -1
+                      const newH = Math.max(0, Math.min(23, h + delta))
+                      setWorkLog(date, dir.id, newH + m / 60)
+                    }}
+                    onChange={(e) => {
+                      const newH = Math.max(0, Math.min(23, Number(e.target.value) || 0))
+                      setWorkLog(date, dir.id, newH + m / 60)
+                    }}
+                  />
+                  <span className="text-xs text-muted-foreground">:</span>
+                  <input
+                    type="number"
+                    min="0"
+                    max="59"
+                    step="15"
+                    value={String(m).padStart(2, "0")}
+                    className={cn(
+                      "h-8 w-9 rounded-md border border-input bg-transparent text-center text-sm font-bold tabular-nums outline-none focus:border-ring focus:ring-2 focus:ring-ring/50 dark:bg-input/30",
+                      hours > 0 ? colors.text : ""
+                    )}
+                    onWheel={(e) => {
+                      e.preventDefault()
+                      const delta = e.deltaY < 0 ? 15 : -15
+                      let newM = m + delta
+                      let newH = h
+                      if (newM >= 60) { newM = 0; newH = Math.min(23, newH + 1) }
+                      if (newM < 0) { newM = 45; newH = Math.max(0, newH - 1) }
+                      setWorkLog(date, dir.id, newH + newM / 60)
+                    }}
+                    onChange={(e) => {
+                      const newM = Math.max(0, Math.min(59, Number(e.target.value) || 0))
+                      setWorkLog(date, dir.id, h + newM / 60)
+                    }}
+                  />
+                </div>
               </div>
             )
           })}
@@ -249,6 +265,7 @@ function DayBlock({
     getOrCreateEntry,
     addThought,
     deleteThought,
+    toggleBookmark,
   } = useDiary()
 
   const entry = getOrCreateEntry(date)
@@ -273,9 +290,25 @@ function DayBlock({
   return (
     <Card className={cn(isToday && "border-2 border-primary/20")}>
       <CardHeader>
-        <CardTitle className={isToday ? "text-2xl" : "text-lg"}>
-          {isToday ? "Сегодня" : formatDateRu(date)}
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className={isToday ? "text-2xl" : "text-lg"}>
+            {isToday ? "Сегодня" : formatDateRu(date)}
+          </CardTitle>
+          <button
+            type="button"
+            onClick={() => toggleBookmark(date)}
+            className={cn(
+              "transition-all",
+              entry.isBookmarked ? "text-amber-500" : "text-muted-foreground/30 hover:text-muted-foreground"
+            )}
+          >
+            {entry.isBookmarked ? (
+              <Flame className="h-7 w-7 fill-current" />
+            ) : (
+              <Bookmark className="h-7 w-7" />
+            )}
+          </button>
+        </div>
       </CardHeader>
       <CardContent>
         <div className="grid gap-6 xl:grid-cols-[1fr_320px]">
