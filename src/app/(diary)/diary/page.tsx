@@ -181,8 +181,6 @@ function RightPanel({
           {workDirections.map((dir) => {
             const log = entry.workLogs.find((w) => w.directionId === dir.id)
             const hours = log?.hours ?? 0
-            const h = Math.floor(hours)
-            const m = Math.round((hours - h) * 60)
             const colors = DIARY_CATEGORY_COLORS[dir.color] ?? DIARY_CATEGORY_COLORS.slate
             return (
               <div
@@ -195,53 +193,16 @@ function RightPanel({
                 <span className={cn("text-xs font-medium truncate", hours > 0 ? colors.text : "text-muted-foreground")}>
                   {dir.name}
                 </span>
-                <div className="ml-auto flex items-center gap-0.5">
-                  <input
-                    type="number"
-                    min="0"
-                    max="23"
-                    value={h}
-                    className={cn(
-                      "h-8 w-9 rounded-md border border-input bg-transparent text-center text-sm font-bold tabular-nums outline-none focus:border-ring focus:ring-2 focus:ring-ring/50 dark:bg-input/30",
-                      hours > 0 ? colors.text : ""
-                    )}
-                    onWheel={(e) => {
-                      e.preventDefault()
-                      const delta = e.deltaY < 0 ? 1 : -1
-                      const newH = Math.max(0, Math.min(23, h + delta))
-                      setWorkLog(date, dir.id, newH + m / 60)
-                    }}
-                    onChange={(e) => {
-                      const newH = Math.max(0, Math.min(23, Number(e.target.value) || 0))
-                      setWorkLog(date, dir.id, newH + m / 60)
-                    }}
-                  />
-                  <span className="text-xs text-muted-foreground">:</span>
-                  <input
-                    type="number"
-                    min="0"
-                    max="59"
-                    step="15"
-                    value={String(m).padStart(2, "0")}
-                    className={cn(
-                      "h-8 w-9 rounded-md border border-input bg-transparent text-center text-sm font-bold tabular-nums outline-none focus:border-ring focus:ring-2 focus:ring-ring/50 dark:bg-input/30",
-                      hours > 0 ? colors.text : ""
-                    )}
-                    onWheel={(e) => {
-                      e.preventDefault()
-                      const delta = e.deltaY < 0 ? 15 : -15
-                      let newM = m + delta
-                      let newH = h
-                      if (newM >= 60) { newM = 0; newH = Math.min(23, newH + 1) }
-                      if (newM < 0) { newM = 45; newH = Math.max(0, newH - 1) }
-                      setWorkLog(date, dir.id, newH + newM / 60)
-                    }}
-                    onChange={(e) => {
-                      const newM = Math.max(0, Math.min(59, Number(e.target.value) || 0))
-                      setWorkLog(date, dir.id, h + newM / 60)
-                    }}
-                  />
-                </div>
+                <Input
+                  type="number"
+                  min="0"
+                  max="24"
+                  step="0.5"
+                  value={hours || ""}
+                  placeholder="0"
+                  className="ml-auto h-7 w-14 text-center text-xs"
+                  onChange={(e) => setWorkLog(date, dir.id, Number(e.target.value) || 0)}
+                />
               </div>
             )
           })}
