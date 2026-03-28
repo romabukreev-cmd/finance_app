@@ -28,7 +28,7 @@ import { todayIsoDate } from "@/lib/finance/format"
 const STORAGE_KEY = "diary:state:v1"
 
 function generateId() {
-  return crypto.randomUUID()
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`
 }
 
 function emptyEntry(date: string): DiaryEntry {
