@@ -3,8 +3,6 @@
 import { useMemo, useState } from "react"
 import {
   Bookmark,
-  ChevronLeft,
-  ChevronRight,
   Clock,
   Flame,
   Plus,
@@ -111,23 +109,143 @@ function IconToggle({
   )
 }
 
-function TodayBlock() {
+/* ────── Правая колонка (бафы/дебафы/часы) ────── */
+
+function RightPanel({
+  date,
+  isEditable,
+}: {
+  date: string
+  isEditable?: boolean
+}) {
   const {
-    categories,
     workDirections,
     buffs,
     debuffs,
     getOrCreateEntry,
-    addThought,
-    deleteThought,
     toggleBuff,
     toggleDebuff,
     toggleBookmark,
     setWorkLog,
   } = useDiary()
 
-  const today = todayIsoDate()
-  const entry = getOrCreateEntry(today)
+  const entry = getOrCreateEntry(date)
+  const totalHours = entry.workLogs.reduce((sum, w) => sum + w.hours, 0)
+
+  return (
+    <div className="space-y-4">
+      {/* Закладка */}
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-medium text-muted-foreground">{formatDateRu(date)}</span>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => toggleBookmark(date)}
+          className={cn("h-8 w-8", entry.isBookmarked ? "text-amber-500" : "text-muted-foreground")}
+        >
+          {entry.isBookmarked ? (
+            <Flame className="h-4 w-4 fill-current" />
+          ) : (
+            <Bookmark className="h-4 w-4" />
+          )}
+        </Button>
+      </div>
+
+      {/* Бафы + Дебафы */}
+      <div className="flex items-start gap-4">
+        <div className="flex-1 space-y-1.5">
+          <h3 className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">Бафы</h3>
+          <div className="flex flex-wrap gap-1.5">
+            {buffs.map((b) => (
+              <IconToggle
+                key={b.id}
+                emoji={b.emoji}
+                label={b.name}
+                active={entry.activeBuffIds.includes(b.id)}
+                type="buff"
+                onClick={() => toggleBuff(date, b.id)}
+              />
+            ))}
+          </div>
+        </div>
+        <div className="flex-1 space-y-1.5">
+          <h3 className="text-xs font-semibold text-rose-600 dark:text-rose-400">Дебафы</h3>
+          <div className="flex flex-wrap gap-1.5">
+            {debuffs.map((d) => (
+              <IconToggle
+                key={d.id}
+                emoji={d.emoji}
+                label={d.name}
+                active={entry.activeDebuffIds.includes(d.id)}
+                type="debuff"
+                onClick={() => toggleDebuff(date, d.id)}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Рабочие часы */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <h3 className="text-xs font-semibold text-muted-foreground">Рабочие часы</h3>
+          <span className="flex items-center gap-1 text-sm font-bold">
+            <Clock className="h-3.5 w-3.5" />
+            {totalHours}ч
+          </span>
+        </div>
+        <div className="grid grid-cols-2 gap-1.5">
+          {workDirections.map((dir) => {
+            const log = entry.workLogs.find((w) => w.directionId === dir.id)
+            const hours = log?.hours ?? 0
+            const colors = DIARY_CATEGORY_COLORS[dir.color] ?? DIARY_CATEGORY_COLORS.slate
+            return (
+              <div
+                key={dir.id}
+                className={cn(
+                  "flex items-center gap-2 rounded-lg border p-2",
+                  hours > 0 ? `${colors.bg} ${colors.border}` : "border-border"
+                )}
+              >
+                <span className={cn("text-xs font-medium truncate", hours > 0 ? colors.text : "text-muted-foreground")}>
+                  {dir.name}
+                </span>
+                <Input
+                  type="number"
+                  min="0"
+                  max="24"
+                  step="0.5"
+                  value={hours || ""}
+                  placeholder="0"
+                  className="ml-auto h-7 w-14 text-center text-xs"
+                  onChange={(e) => setWorkLog(date, dir.id, Number(e.target.value) || 0)}
+                />
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* ────── Блок дня (сегодня + история) ────── */
+
+function DayBlock({
+  date,
+  isToday,
+}: {
+  date: string
+  isToday: boolean
+}) {
+  const {
+    categories,
+    getOrCreateEntry,
+    addThought,
+    deleteThought,
+  } = useDiary()
+
+  const entry = getOrCreateEntry(date)
 
   const [newText, setNewText] = useState("")
   const [selectedCatIds, setSelectedCatIds] = useState<string[]>([])
@@ -135,7 +253,7 @@ function TodayBlock() {
   const handleAddThought = () => {
     const text = newText.trim()
     if (!text) return
-    addThought(today, text, selectedCatIds)
+    addThought(date, text, selectedCatIds)
     setNewText("")
     setSelectedCatIds([])
   }
@@ -146,36 +264,17 @@ function TodayBlock() {
     )
   }
 
-  const totalHours = entry.workLogs.reduce((sum, w) => sum + w.hours, 0)
-
   return (
-    <Card className="border-2 border-primary/20">
+    <Card className={cn(isToday && "border-2 border-primary/20")}>
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="text-2xl">Сегодня</CardTitle>
-            <p className="text-sm text-muted-foreground">{formatDateRu(today)}</p>
-          </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => toggleBookmark(today)}
-            className={entry.isBookmarked ? "text-amber-500" : "text-muted-foreground"}
-          >
-            {entry.isBookmarked ? (
-              <Flame className="h-5 w-5 fill-current" />
-            ) : (
-              <Bookmark className="h-5 w-5" />
-            )}
-          </Button>
-        </div>
+        <CardTitle className={isToday ? "text-2xl" : "text-lg"}>
+          {isToday ? "Сегодня" : formatDateRu(date)}
+        </CardTitle>
       </CardHeader>
       <CardContent>
         <div className="grid gap-6 xl:grid-cols-[1fr_320px]">
           {/* Левая колонка — мысли */}
           <div className="space-y-3">
-            <h3 className="text-sm font-semibold text-muted-foreground">Мысли и идеи</h3>
-
             {entry.thoughts.map((thought) => (
               <div
                 key={thought.id}
@@ -203,14 +302,18 @@ function TodayBlock() {
                   variant="ghost"
                   size="icon"
                   className="h-8 w-8 shrink-0 opacity-0 group-hover:opacity-100"
-                  onClick={() => deleteThought(today, thought.id)}
+                  onClick={() => deleteThought(date, thought.id)}
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
             ))}
 
-            {/* Новая мысль */}
+            {entry.thoughts.length === 0 && !isToday && (
+              <p className="text-sm text-muted-foreground/50">Нет записей</p>
+            )}
+
+            {/* Ввод новой мысли */}
             <div className="space-y-2 rounded-xl border border-dashed p-3">
               <div className="flex flex-wrap gap-1.5">
                 {categories.map((cat) => (
@@ -239,7 +342,7 @@ function TodayBlock() {
                       handleAddThought()
                     }
                   }}
-                  rows={4}
+                  rows={isToday ? 4 : 2}
                   className="flex-1 resize-none overflow-hidden rounded-lg border border-input bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
                 />
                 <Button size="icon" onClick={handleAddThought} disabled={!newText.trim()} className="self-end">
@@ -249,237 +352,39 @@ function TodayBlock() {
             </div>
           </div>
 
-          {/* Правая колонка — бафы, дебафы, часы */}
-          <div className="space-y-5">
-            {/* Бафы + Дебафы */}
-            <div className="space-y-3">
-              <div className="flex items-start gap-4">
-                <div className="flex-1 space-y-1.5">
-                  <h3 className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">Бафы</h3>
-                  <div className="flex flex-wrap gap-1.5">
-                    {buffs.map((b) => (
-                      <IconToggle
-                        key={b.id}
-                        emoji={b.emoji}
-                        label={b.name}
-                        active={entry.activeBuffIds.includes(b.id)}
-                        type="buff"
-                        onClick={() => toggleBuff(today, b.id)}
-                      />
-                    ))}
-                  </div>
-                </div>
-                <div className="flex-1 space-y-1.5">
-                  <h3 className="text-xs font-semibold text-rose-600 dark:text-rose-400">Дебафы</h3>
-                  <div className="flex flex-wrap gap-1.5">
-                    {debuffs.map((d) => (
-                      <IconToggle
-                        key={d.id}
-                        emoji={d.emoji}
-                        label={d.name}
-                        active={entry.activeDebuffIds.includes(d.id)}
-                        type="debuff"
-                        onClick={() => toggleDebuff(today, d.id)}
-                      />
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Рабочие часы */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xs font-semibold text-muted-foreground">Рабочие часы</h3>
-                <span className="flex items-center gap-1 text-sm font-bold">
-                  <Clock className="h-3.5 w-3.5" />
-                  {totalHours}ч
-                </span>
-              </div>
-              <div className="grid grid-cols-2 gap-1.5">
-                {workDirections.map((dir) => {
-                  const log = entry.workLogs.find((w) => w.directionId === dir.id)
-                  const hours = log?.hours ?? 0
-                  const colors = DIARY_CATEGORY_COLORS[dir.color] ?? DIARY_CATEGORY_COLORS.slate
-                  return (
-                    <div
-                      key={dir.id}
-                      className={cn(
-                        "flex items-center gap-2 rounded-lg border p-2",
-                        hours > 0 ? `${colors.bg} ${colors.border}` : "border-border"
-                      )}
-                    >
-                      <span className={cn("text-xs font-medium truncate", hours > 0 ? colors.text : "text-muted-foreground")}>
-                        {dir.name}
-                      </span>
-                      <Input
-                        type="number"
-                        min="0"
-                        max="24"
-                        step="0.5"
-                        value={hours || ""}
-                        placeholder="0"
-                        className="ml-auto h-7 w-14 text-center text-xs"
-                        onChange={(e) => setWorkLog(today, dir.id, Number(e.target.value) || 0)}
-                      />
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          </div>
+          {/* Правая колонка */}
+          <RightPanel date={date} />
         </div>
       </CardContent>
     </Card>
   )
 }
 
-/* ────────── Календарь ────────── */
-
-function CalendarView() {
-  const { entries, categories, buffs, debuffs, workDirections } = useDiary()
-  const today = todayIsoDate()
-
-  const [viewMonth, setViewMonth] = useState(() => today.slice(0, 7))
-
-  const [year, month] = viewMonth.split("-").map(Number)
-  const daysInMonth = new Date(year, month, 0).getDate()
-  const firstDayOfWeek = (new Date(year, month - 1, 1).getDay() + 6) % 7 // Monday = 0
-
-  const monthLabel = new Date(year, month - 1).toLocaleDateString("ru-RU", {
-    month: "long",
-    year: "numeric",
-  })
-
-  const prevMonth = () => {
-    const d = new Date(year, month - 2, 1)
-    setViewMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`)
-  }
-
-  const nextMonth = () => {
-    const d = new Date(year, month, 1)
-    setViewMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`)
-  }
-
-  const entryMap = useMemo(() => {
-    const map = new Map<string, typeof entries[number]>()
-    for (const e of entries) map.set(e.date, e)
-    return map
-  }, [entries])
-
-  const weekDays = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
-
-  return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-muted-foreground">Календарь</h2>
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" onClick={prevMonth} className="h-8 w-8">
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <span className="min-w-[140px] text-center text-sm font-medium capitalize">
-            {monthLabel}
-          </span>
-          <Button variant="ghost" size="icon" onClick={nextMonth} className="h-8 w-8">
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-7 gap-1">
-        {weekDays.map((d) => (
-          <div key={d} className="py-1 text-center text-xs font-medium text-muted-foreground">
-            {d}
-          </div>
-        ))}
-
-        {Array.from({ length: firstDayOfWeek }).map((_, i) => (
-          <div key={`empty-${i}`} />
-        ))}
-
-        {Array.from({ length: daysInMonth }).map((_, i) => {
-          const day = i + 1
-          const dateStr = `${viewMonth}-${String(day).padStart(2, "0")}`
-          const entry = entryMap.get(dateStr)
-          const isToday = dateStr === today
-          const hasContent = entry && (entry.thoughts.length > 0 || entry.activeBuffIds.length > 0 || entry.activeDebuffIds.length > 0 || entry.workLogs.length > 0)
-          const totalHours = entry?.workLogs.reduce((s, w) => s + w.hours, 0) ?? 0
-          const activeBuffCount = entry?.activeBuffIds.length ?? 0
-          const activeDebuffCount = entry?.activeDebuffIds.length ?? 0
-
-          return (
-            <div
-              key={day}
-              className={cn(
-                "min-h-[80px] rounded-lg border p-1.5 text-xs transition-all",
-                isToday
-                  ? "border-primary/40 bg-primary/5 ring-1 ring-primary/20"
-                  : hasContent
-                    ? "border-border bg-card"
-                    : "border-transparent bg-muted/20"
-              )}
-            >
-              <div className="flex items-center justify-between">
-                <span className={cn(
-                  "font-medium",
-                  isToday ? "text-primary font-bold" : "text-muted-foreground"
-                )}>
-                  {day}
-                </span>
-                {entry?.isBookmarked && (
-                  <Flame className="h-3 w-3 fill-amber-500 text-amber-500" />
-                )}
-              </div>
-
-              {hasContent && (
-                <div className="mt-1 space-y-0.5">
-                  {/* Категории мыслей */}
-                  {entry.thoughts.length > 0 && (
-                    <div className="flex flex-wrap gap-0.5">
-                      {[...new Set(entry.thoughts.flatMap((t) => t.categoryIds))].slice(0, 3).map((catId) => {
-                        const cat = categories.find((c) => c.id === catId)
-                        if (!cat) return null
-                        const colors = DIARY_CATEGORY_COLORS[cat.color] ?? DIARY_CATEGORY_COLORS.slate
-                        return (
-                          <span
-                            key={catId}
-                            className={cn("h-1.5 w-3 rounded-full", colors.bg, colors.border, "border")}
-                          />
-                        )
-                      })}
-                    </div>
-                  )}
-
-                  {/* Бафы/дебафы мини */}
-                  <div className="flex gap-0.5">
-                    {activeBuffCount > 0 && (
-                      <span className="text-[10px] text-emerald-600 dark:text-emerald-400">
-                        +{activeBuffCount}
-                      </span>
-                    )}
-                    {activeDebuffCount > 0 && (
-                      <span className="text-[10px] text-rose-600 dark:text-rose-400">
-                        -{activeDebuffCount}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Часы */}
-                  {totalHours > 0 && (
-                    <span className="text-[10px] text-muted-foreground">{totalHours}ч</span>
-                  )}
-                </div>
-              )}
-            </div>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
+/* ────── Главная страница ────── */
 
 export default function DiaryPage() {
-  const { hydrated } = useDiary()
+  const { hydrated, entries } = useDiary()
+  const today = todayIsoDate()
+
+  const [periodFrom, setPeriodFrom] = useState(() => {
+    const d = new Date()
+    d.setDate(d.getDate() - 30)
+    return d.toISOString().slice(0, 10)
+  })
+  const [periodTo, setPeriodTo] = useState(today)
+
+  const allDates = useMemo(() => {
+    const dates: string[] = []
+    const start = new Date(periodFrom + "T00:00:00")
+    const end = new Date(periodTo + "T00:00:00")
+
+    const d = new Date(end)
+    while (d >= start) {
+      dates.push(d.toISOString().slice(0, 10))
+      d.setDate(d.getDate() - 1)
+    }
+    return dates
+  }, [periodFrom, periodTo])
 
   if (!hydrated) {
     return (
@@ -494,11 +399,28 @@ export default function DiaryPage() {
       <PageHeader
         title="Дневник"
         description="Мысли, привычки и рабочие часы — каждый день."
+        actions={
+          <div className="flex items-center gap-2">
+            <Input
+              type="date"
+              value={periodFrom}
+              onChange={(e) => setPeriodFrom(e.target.value)}
+              className="h-9 w-[150px] text-sm"
+            />
+            <span className="text-muted-foreground">—</span>
+            <Input
+              type="date"
+              value={periodTo}
+              onChange={(e) => setPeriodTo(e.target.value)}
+              className="h-9 w-[150px] text-sm"
+            />
+          </div>
+        }
       />
 
-      <TodayBlock />
-
-      <CalendarView />
+      {allDates.map((date) => (
+        <DayBlock key={date} date={date} isToday={date === today} />
+      ))}
     </div>
   )
 }
