@@ -134,10 +134,6 @@ function useFloatingToolbar(textareaRef: React.RefObject<HTMLTextAreaElement | n
   return FloatingToolbar({ textareaRef, value, onChange })
 }
 
-function hasFormatting(text: string) {
-  return /\*\*[^*]+\*\*|\*[^*]+\*|~~[^~]+~~|~[^~]+~|\{gray\}|\{light\}/.test(text)
-}
-
 function formatDateRu(iso: string) {
   const d = new Date(iso + "T00:00:00")
   return d.toLocaleDateString("ru-RU", {
@@ -284,12 +280,6 @@ function ThoughtItem({
           rows={3}
           className="w-full resize-none overflow-hidden rounded-lg border border-input bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
         />
-        {hasFormatting(editText) && (
-          <div className="rounded-lg bg-muted/30 px-3 py-2">
-            <p className="text-[10px] font-medium text-muted-foreground/50 mb-1">Превью:</p>
-            <p className="text-sm whitespace-pre-wrap">{renderFormattedText(editText)}</p>
-          </div>
-        )}
         <div className="flex gap-2">
           <Button size="sm" onClick={save} className="h-7 text-xs">
             Сохранить
@@ -600,12 +590,6 @@ function DayBlock({
                   <Plus className="h-4 w-4" />
                 </Button>
               </div>
-              {hasFormatting(newText) && (
-                <div className="rounded-lg bg-muted/30 px-3 py-2">
-                  <p className="text-[10px] font-medium text-muted-foreground/50 mb-1">Превью:</p>
-                  <p className="text-sm whitespace-pre-wrap">{renderFormattedText(newText)}</p>
-                </div>
-              )}
             </div>
           </div>
 
