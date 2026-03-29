@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useMemo, useRef, useState } from "react"
 import {
   Bookmark,
   Clock,
@@ -25,7 +25,9 @@ import { todayIsoDate } from "@/lib/finance/format"
 import { cn } from "@/lib/utils"
 
 function renderFormattedText(text: string) {
-  const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*|~[^~]+~)/g)
+  // Order matters: longer markers first
+  const regex = /(\*\*[^*]+\*\*|\*[^*]+\*|~~[^~]+~~|~[^~]+~|\{gray\}[^{]+\{\/gray\}|\{light\}[^{]+\{\/light\})/g
+  const parts = text.split(regex)
   return parts.map((part, i) => {
     if (part.startsWith("**") && part.endsWith("**")) {
       return <strong key={i}>{part.slice(2, -2)}</strong>
@@ -33,11 +35,103 @@ function renderFormattedText(text: string) {
     if (part.startsWith("*") && part.endsWith("*")) {
       return <em key={i}>{part.slice(1, -1)}</em>
     }
+    if (part.startsWith("~~") && part.endsWith("~~")) {
+      return <s key={i}>{part.slice(2, -2)}</s>
+    }
     if (part.startsWith("~") && part.endsWith("~")) {
       return <span key={i} className="text-muted-foreground/60">{part.slice(1, -1)}</span>
     }
+    if (part.startsWith("{gray}") && part.endsWith("{/gray}")) {
+      return <span key={i} className="text-muted-foreground">{part.slice(6, -7)}</span>
+    }
+    if (part.startsWith("{light}") && part.endsWith("{/light}")) {
+      return <span key={i} className="text-muted-foreground/40">{part.slice(7, -8)}</span>
+    }
     return part
   })
+}
+
+function FloatingToolbar({
+  textareaRef,
+  value,
+  onChange,
+}: {
+  textareaRef: React.RefObject<HTMLTextAreaElement | null>
+  value: string
+  onChange: (v: string) => void
+}) {
+  const [show, setShow] = useState(false)
+  const [pos, setPos] = useState({ top: 0, left: 0 })
+
+  const checkSelection = () => {
+    const el = textareaRef.current
+    if (!el) return
+    const start = el.selectionStart
+    const end = el.selectionEnd
+    if (start === end) {
+      setShow(false)
+      return
+    }
+    // Position above the textarea
+    const rect = el.getBoundingClientRect()
+    setPos({ top: rect.top - 40, left: rect.left + rect.width / 2 })
+    setShow(true)
+  }
+
+  const wrap = (before: string, after: string) => {
+    const el = textareaRef.current
+    if (!el) return
+    const start = el.selectionStart
+    const end = el.selectionEnd
+    const newText = value.slice(0, start) + before + value.slice(start, end) + after + value.slice(end)
+    onChange(newText)
+    setShow(false)
+    requestAnimationFrame(() => {
+      el.focus()
+      el.setSelectionRange(start + before.length, end + before.length)
+    })
+  }
+
+  // Attach listeners
+  const attachHandlers = {
+    onSelect: checkSelection,
+    onBlur: () => setTimeout(() => setShow(false), 200),
+  }
+
+  const btn = "h-8 w-8 rounded-lg text-xs font-medium transition-colors hover:bg-white/20"
+
+  if (!show) return { attachHandlers, toolbar: null }
+
+  return {
+    attachHandlers,
+    toolbar: (
+      <div
+        className="fixed z-50 flex items-center gap-0.5 rounded-xl bg-foreground px-2 py-1 shadow-lg"
+        style={{ top: pos.top, left: pos.left, transform: "translateX(-50%)" }}
+      >
+        <button type="button" className={cn(btn, "font-bold text-background")} onMouseDown={(e) => { e.preventDefault(); wrap("**", "**") }} title="Жирный">
+          B
+        </button>
+        <button type="button" className={cn(btn, "italic text-background")} onMouseDown={(e) => { e.preventDefault(); wrap("*", "*") }} title="Курсив">
+          I
+        </button>
+        <button type="button" className={cn(btn, "line-through text-background")} onMouseDown={(e) => { e.preventDefault(); wrap("~~", "~~") }} title="Зачёркнутый">
+          S
+        </button>
+        <div className="mx-0.5 h-4 w-px bg-background/30" />
+        <button type="button" className={btn} onMouseDown={(e) => { e.preventDefault(); wrap("{gray}", "{/gray}") }} title="Тёмно-серый">
+          <span className="inline-block h-3.5 w-3.5 rounded-full bg-background/60" />
+        </button>
+        <button type="button" className={btn} onMouseDown={(e) => { e.preventDefault(); wrap("{light}", "{/light}") }} title="Светло-серый">
+          <span className="inline-block h-3.5 w-3.5 rounded-full bg-background/30" />
+        </button>
+      </div>
+    ),
+  }
+}
+
+function useFloatingToolbar(textareaRef: React.RefObject<HTMLTextAreaElement | null>, value: string, onChange: (v: string) => void) {
+  return FloatingToolbar({ textareaRef, value, onChange })
 }
 
 function formatDateRu(iso: string) {
@@ -126,6 +220,8 @@ function ThoughtItem({
   const [editing, setEditing] = useState(false)
   const [editText, setEditText] = useState(thought.text)
   const [editCatIds, setEditCatIds] = useState(thought.categoryIds)
+  const editTextareaRef = useRef<HTMLTextAreaElement>(null)
+  const { attachHandlers: editHandlers, toolbar: editToolbar } = useFloatingToolbar(editTextareaRef, editText, setEditText)
 
   const startEdit = () => {
     setEditText(thought.text)
@@ -162,7 +258,9 @@ function ThoughtItem({
             />
           ))}
         </div>
+        {editToolbar}
         <textarea
+          ref={editTextareaRef}
           value={editText}
           onChange={(e) => {
             setEditText(e.target.value)
@@ -177,6 +275,7 @@ function ThoughtItem({
             }
             if (e.key === "Escape") cancel()
           }}
+          {...editHandlers}
           autoFocus
           rows={3}
           className="w-full resize-none overflow-hidden rounded-lg border border-input bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
@@ -385,6 +484,8 @@ function DayBlock({
 
   const [newText, setNewText] = useState("")
   const [selectedCatIds, setSelectedCatIds] = useState<string[]>([])
+  const newTextareaRef = useRef<HTMLTextAreaElement>(null)
+  const { attachHandlers, toolbar } = useFloatingToolbar(newTextareaRef, newText, setNewText)
 
   const handleAddThought = () => {
     const text = newText.trim()
@@ -463,8 +564,10 @@ function DayBlock({
                   />
                 ))}
               </div>
+              {toolbar}
               <div className="flex gap-2">
                 <textarea
+                  ref={newTextareaRef}
                   placeholder="Запиши мысль или идею..."
                   value={newText}
                   onChange={(e) => {
@@ -479,6 +582,7 @@ function DayBlock({
                       handleAddThought()
                     }
                   }}
+                  {...attachHandlers}
                   rows={isToday ? 4 : 2}
                   className="flex-1 resize-none overflow-hidden rounded-lg border border-input bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
                 />
