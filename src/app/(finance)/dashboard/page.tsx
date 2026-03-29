@@ -271,11 +271,10 @@ export default function DashboardPage() {
   )
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Дашборд"
-        description="Визуальный обзор выбранного месяца: деньги, динамика и структура трат."
-        descriptionClassName="text-base md:text-lg"
+        description=""
         actions={
           <Input
             className="h-10 w-[180px] text-sm font-semibold"
@@ -353,7 +352,7 @@ export default function DashboardPage() {
             <CardContent>
               <ChartContainer
                 config={incomeExpenseConfig}
-                className="h-[230px] w-full aspect-auto"
+                className="h-[180px] w-full aspect-auto"
               >
                 <LineChart data={incomeExpenseSeries} margin={{ left: 8, right: 8, top: 8 }}>
                   <CartesianGrid vertical={false} />
@@ -405,7 +404,7 @@ export default function DashboardPage() {
             <CardContent>
               <ChartContainer
                 config={netWorthConfig}
-                className="h-[230px] w-full aspect-auto"
+                className="h-[180px] w-full aspect-auto"
               >
                 <LineChart data={netWorthSeries} margin={{ left: 8, right: 8, top: 8 }}>
                   <CartesianGrid vertical={false} />
@@ -450,7 +449,7 @@ export default function DashboardPage() {
                 <>
                   <ChartContainer
                     config={incomePieConfig}
-                    className="mx-auto h-[190px] w-full max-w-[220px] aspect-auto"
+                    className="mx-auto h-[150px] w-full max-w-[180px] aspect-auto"
                   >
                     <PieChart>
                       <ChartTooltip
@@ -516,7 +515,7 @@ export default function DashboardPage() {
                 <>
                   <ChartContainer
                     config={expensePieConfig}
-                    className="mx-auto h-[190px] w-full max-w-[220px] aspect-auto"
+                    className="mx-auto h-[150px] w-full max-w-[180px] aspect-auto"
                   >
                     <PieChart>
                       <ChartTooltip

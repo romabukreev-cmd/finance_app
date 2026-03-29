@@ -94,6 +94,7 @@ export function QuickInputBar() {
   return (
     <form onSubmit={handleSubmit} className="rounded-2xl border bg-card p-3 ring-1 ring-foreground/5">
       <div className="flex flex-wrap items-center gap-2">
+        <span className="text-sm font-medium text-muted-foreground whitespace-nowrap">Новая операция:</span>
         {/* Тип */}
         <div className="flex rounded-lg border bg-muted/30 p-0.5">
           {(["income", "expense", "transfer"] as TransactionType[]).map((t) => (
@@ -197,7 +198,7 @@ export function QuickInputBar() {
           placeholder="Комментарий"
           value={note}
           onChange={(e) => setNote(e.target.value)}
-          className="h-9 min-w-[100px] flex-1 text-sm"
+          className="h-9 w-[140px] text-sm"
         />
 
         {/* Добавить */}
