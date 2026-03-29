@@ -264,9 +264,9 @@ function DayBlock({
             )}
           >
             {entry.isBookmarked ? (
-              <Flame className="h-7 w-7 fill-current" />
+              <Flame className="h-5 w-5 fill-current" />
             ) : (
-              <Bookmark className="h-7 w-7" />
+              <Bookmark className="h-5 w-5" />
             )}
           </button>
         </div>
@@ -360,10 +360,65 @@ function DayBlock({
   )
 }
 
+/* ────── Свёрнутый пустой день ────── */
+
+function CollapsedDay({
+  date,
+  onExpand,
+}: {
+  date: string
+  onExpand: () => void
+}) {
+  const { getOrCreateEntry, toggleBookmark } = useDiary()
+  const entry = getOrCreateEntry(date)
+
+  return (
+    <button
+      type="button"
+      onClick={onExpand}
+      className={cn(
+        "flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left transition-all hover:bg-muted/50",
+        entry.isBookmarked ? "border-amber-300/50 dark:border-amber-700/50" : "border-border"
+      )}
+    >
+      <span className="text-sm font-medium text-muted-foreground">{formatDateRu(date)}</span>
+      <div className="flex items-center gap-2">
+        {entry.isBookmarked && (
+          <Flame className="h-4 w-4 fill-amber-500 text-amber-500" />
+        )}
+        <span className="text-xs text-muted-foreground/50">развернуть</span>
+      </div>
+    </button>
+  )
+}
+
+/* ────── Обёртка дня (свёрнутый/развёрнутый) ────── */
+
+function DayEntry({ date, isToday }: { date: string; isToday: boolean }) {
+  const { entries } = useDiary()
+  const entry = entries.find((e) => e.date === date)
+
+  const hasContent = entry && (
+    entry.thoughts.length > 0 ||
+    entry.activeBuffIds.length > 0 ||
+    entry.activeDebuffIds.length > 0 ||
+    entry.workLogs.some((w) => w.hours > 0) ||
+    entry.isBookmarked
+  )
+
+  const [expanded, setExpanded] = useState(isToday || !!hasContent)
+
+  if (!expanded) {
+    return <CollapsedDay date={date} onExpand={() => setExpanded(true)} />
+  }
+
+  return <DayBlock date={date} isToday={isToday} />
+}
+
 /* ────── Главная страница ────── */
 
 export default function DiaryPage() {
-  const { hydrated, entries } = useDiary()
+  const { hydrated } = useDiary()
   const today = todayIsoDate()
 
   const [periodFrom, setPeriodFrom] = useState(() => {
@@ -395,7 +450,7 @@ export default function DiaryPage() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6">
+    <div className="mx-auto max-w-5xl space-y-3">
       <PageHeader
         title="Дневник"
         description="Мысли, привычки и рабочие часы — каждый день."
@@ -419,7 +474,7 @@ export default function DiaryPage() {
       />
 
       {allDates.map((date) => (
-        <DayBlock key={date} date={date} isToday={date === today} />
+        <DayEntry key={date} date={date} isToday={date === today} />
       ))}
     </div>
   )
