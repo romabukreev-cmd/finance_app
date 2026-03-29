@@ -8,7 +8,7 @@ import {
   PiggyBank,
   TrendingUp,
 } from "lucide-react"
-import { CartesianGrid, Cell, Line, LineChart, Pie, PieChart, XAxis } from "recharts"
+import { CartesianGrid, Cell, Line, LineChart, Pie, PieChart, XAxis, YAxis } from "recharts"
 import { useFinance } from "@/components/finance/finance-provider"
 import { QuickInputBar } from "@/components/finance/quick-input-bar"
 import { QuickOperationDialog } from "@/components/finance/quick-operation-dialog"
@@ -354,9 +354,10 @@ export default function DashboardPage() {
                 config={incomeExpenseConfig}
                 className="h-[180px] w-full aspect-auto"
               >
-                <LineChart data={incomeExpenseSeries} margin={{ left: 8, right: 8, top: 8 }}>
+                <LineChart data={incomeExpenseSeries} margin={{ left: 0, right: 8, top: 8 }}>
                   <CartesianGrid vertical={false} />
                   <XAxis dataKey="day" tickLine={false} axisLine={false} tickMargin={10} />
+                  <YAxis tickLine={false} axisLine={false} tickMargin={4} width={50} tickFormatter={(v) => v >= 1000 ? `${(v/1000).toFixed(0)}к` : String(v)} />
                   <ChartTooltip
                     content={
                       <ChartTooltipContent
@@ -406,9 +407,10 @@ export default function DashboardPage() {
                 config={netWorthConfig}
                 className="h-[180px] w-full aspect-auto"
               >
-                <LineChart data={netWorthSeries} margin={{ left: 8, right: 8, top: 8 }}>
+                <LineChart data={netWorthSeries} margin={{ left: 0, right: 8, top: 8 }}>
                   <CartesianGrid vertical={false} />
                   <XAxis dataKey="day" tickLine={false} axisLine={false} tickMargin={10} />
+                  <YAxis tickLine={false} axisLine={false} tickMargin={4} width={50} tickFormatter={(v) => v >= 1000 ? `${(v/1000).toFixed(0)}к` : String(v)} />
                   <ChartTooltip
                     content={
                       <ChartTooltipContent
