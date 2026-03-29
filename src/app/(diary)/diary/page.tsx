@@ -174,7 +174,7 @@ function RightPanel({
           <h3 className="text-xs font-semibold text-muted-foreground">Рабочие часы</h3>
           <span className="flex items-center gap-1 text-sm font-bold">
             <Clock className="h-3.5 w-3.5" />
-            {totalHours}ч
+            {Math.floor(totalHours)}ч {Math.round((totalHours - Math.floor(totalHours)) * 60)}м
           </span>
         </div>
         <div className="grid grid-cols-2 gap-1.5">
@@ -182,6 +182,8 @@ function RightPanel({
             const log = entry.workLogs.find((w) => w.directionId === dir.id)
             const hours = log?.hours ?? 0
             const colors = DIARY_CATEGORY_COLORS[dir.color] ?? DIARY_CATEGORY_COLORS.slate
+            const h = Math.floor(hours)
+            const m = Math.round((hours - h) * 60)
             return (
               <div
                 key={dir.id}
@@ -193,16 +195,35 @@ function RightPanel({
                 <span className={cn("text-xs font-medium truncate", hours > 0 ? colors.text : "text-muted-foreground")}>
                   {dir.name}
                 </span>
-                <Input
-                  type="number"
-                  min="0"
-                  max="24"
-                  step="0.5"
-                  value={hours || ""}
-                  placeholder="0"
-                  className="ml-auto h-7 w-14 text-center text-xs"
-                  onChange={(e) => setWorkLog(date, dir.id, Number(e.target.value) || 0)}
-                />
+                <div className="ml-auto flex items-center gap-1">
+                  <input
+                    type="number"
+                    min="0"
+                    max="23"
+                    value={h || ""}
+                    placeholder="0"
+                    className="h-7 w-10 rounded-md border border-input bg-transparent text-center text-xs outline-none focus:border-ring focus:ring-1 focus:ring-ring/50 dark:bg-input/30"
+                    onChange={(e) => {
+                      const newH = Math.max(0, Math.min(23, Number(e.target.value) || 0))
+                      setWorkLog(date, dir.id, newH + m / 60)
+                    }}
+                  />
+                  <span className="text-[10px] text-muted-foreground">ч</span>
+                  <input
+                    type="number"
+                    min="0"
+                    max="59"
+                    step="5"
+                    value={m || ""}
+                    placeholder="0"
+                    className="h-7 w-10 rounded-md border border-input bg-transparent text-center text-xs outline-none focus:border-ring focus:ring-1 focus:ring-ring/50 dark:bg-input/30"
+                    onChange={(e) => {
+                      const newM = Math.max(0, Math.min(59, Number(e.target.value) || 0))
+                      setWorkLog(date, dir.id, h + newM / 60)
+                    }}
+                  />
+                  <span className="text-[10px] text-muted-foreground">м</span>
+                </div>
               </div>
             )
           })}
