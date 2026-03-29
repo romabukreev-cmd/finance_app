@@ -6,7 +6,9 @@ import {
   Clock,
   Flame,
   Plus,
+  Pencil,
   Trash2,
+  X,
 } from "lucide-react"
 import { useDiary } from "@/components/diary/diary-provider"
 import { PageHeader } from "@/components/layout/page-header"
@@ -106,6 +108,133 @@ function IconToggle({
     >
       {emoji}
     </button>
+  )
+}
+
+/* ────── Отдельная мысль (просмотр / редактирование) ────── */
+
+function ThoughtItem({
+  thought,
+  date,
+  categories,
+}: {
+  thought: { id: string; text: string; categoryIds: string[] }
+  date: string
+  categories: Array<{ id: string; name: string; color: string }>
+}) {
+  const { updateThought, deleteThought } = useDiary()
+  const [editing, setEditing] = useState(false)
+  const [editText, setEditText] = useState(thought.text)
+  const [editCatIds, setEditCatIds] = useState(thought.categoryIds)
+
+  const startEdit = () => {
+    setEditText(thought.text)
+    setEditCatIds([...thought.categoryIds])
+    setEditing(true)
+  }
+
+  const save = () => {
+    const trimmed = editText.trim()
+    if (!trimmed) return
+    updateThought(date, thought.id, trimmed, editCatIds)
+    setEditing(false)
+  }
+
+  const cancel = () => setEditing(false)
+
+  const toggleCat = (id: string) => {
+    setEditCatIds((prev) =>
+      prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]
+    )
+  }
+
+  if (editing) {
+    return (
+      <div className="space-y-2 rounded-xl border-2 border-primary/30 bg-card p-3">
+        <div className="flex flex-wrap gap-1.5">
+          {categories.map((cat) => (
+            <CategoryBadge
+              key={cat.id}
+              name={cat.name}
+              color={cat.color}
+              selected={editCatIds.includes(cat.id)}
+              onClick={() => toggleCat(cat.id)}
+            />
+          ))}
+        </div>
+        <textarea
+          value={editText}
+          onChange={(e) => {
+            setEditText(e.target.value)
+            const el = e.target
+            el.style.height = "auto"
+            el.style.height = `${el.scrollHeight}px`
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault()
+              save()
+            }
+            if (e.key === "Escape") cancel()
+          }}
+          autoFocus
+          rows={3}
+          className="w-full resize-none overflow-hidden rounded-lg border border-input bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
+        />
+        <div className="flex gap-2">
+          <Button size="sm" onClick={save} className="h-7 text-xs">
+            Сохранить
+          </Button>
+          <Button size="sm" variant="ghost" onClick={cancel} className="h-7 text-xs">
+            Отмена
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="group flex gap-3 rounded-xl border bg-card p-3">
+      <div
+        className="flex-1 cursor-pointer space-y-1.5"
+        onClick={startEdit}
+      >
+        {thought.categoryIds.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {thought.categoryIds.map((catId) => {
+              const cat = categories.find((c) => c.id === catId)
+              if (!cat) return null
+              return (
+                <CategoryBadge
+                  key={catId}
+                  name={cat.name}
+                  color={cat.color}
+                />
+              )
+            })}
+          </div>
+        )}
+        <p className="text-sm whitespace-pre-wrap">{renderFormattedText(thought.text)}</p>
+      </div>
+      <div className="flex shrink-0 flex-col gap-1 opacity-0 group-hover:opacity-100">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7"
+          onClick={startEdit}
+        >
+          <Pencil className="h-3.5 w-3.5" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7"
+          onClick={() => deleteThought(date, thought.id)}
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+    </div>
   )
 }
 
@@ -309,37 +438,12 @@ function DayBlock({
           {/* Левая колонка — мысли */}
           <div className="space-y-3">
             {entry.thoughts.map((thought) => (
-              <div
+              <ThoughtItem
                 key={thought.id}
-                className="group flex gap-3 rounded-xl border bg-card p-3"
-              >
-                <div className="flex-1 space-y-1.5">
-                  {thought.categoryIds.length > 0 && (
-                    <div className="flex flex-wrap gap-1">
-                      {thought.categoryIds.map((catId) => {
-                        const cat = categories.find((c) => c.id === catId)
-                        if (!cat) return null
-                        return (
-                          <CategoryBadge
-                            key={catId}
-                            name={cat.name}
-                            color={cat.color}
-                          />
-                        )
-                      })}
-                    </div>
-                  )}
-                  <p className="text-sm whitespace-pre-wrap">{renderFormattedText(thought.text)}</p>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 shrink-0 opacity-0 group-hover:opacity-100"
-                  onClick={() => deleteThought(date, thought.id)}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
+                thought={thought}
+                date={date}
+                categories={categories}
+              />
             ))}
 
             {entry.thoughts.length === 0 && !isToday && (
