@@ -14,6 +14,8 @@ import {
 } from "@/components/ui/select"
 import { todayIsoDate } from "@/lib/finance/format"
 import { findName } from "@/lib/finance/helpers"
+import { categoryBadgeClass, normalizeCategoryColor } from "@/lib/finance/category-colors"
+import { accountCardColorClass } from "@/lib/finance/account-colors"
 import type { TransactionType } from "@/lib/finance/types"
 import { cn } from "@/lib/utils"
 
@@ -45,6 +47,10 @@ export function QuickInputBar() {
 
   const selectedCategories = type === "income" ? incomeCategories : expenseCategories
 
+  const currentCategoryId = categoryId || selectedCategories[0]?.id || ""
+  const currentCategory = selectedCategories.find((c) => c.id === currentCategoryId)
+  const currentAccount = activeAccounts.find((a) => a.id === accountId)
+
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault()
 
@@ -68,7 +74,7 @@ export function QuickInputBar() {
             type,
             transactionDate: date,
             accountId,
-            categoryId: categoryId || selectedCategories[0]?.id || "",
+            categoryId: currentCategoryId,
             amount: num,
             note: note || undefined,
           })
@@ -149,7 +155,12 @@ export function QuickInputBar() {
               </SelectTrigger>
               <SelectContent>
                 {activeAccounts.map((a) => (
-                  <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
+                  <SelectItem key={a.id} value={a.id}>
+                    <span className="flex items-center gap-2">
+                      <span className={cn("h-2.5 w-2.5 rounded-full", accountCardColorClass(a.color).split(" ")[0]?.replace("border-", "bg-") || "bg-slate-400")} />
+                      {a.name}
+                    </span>
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -160,7 +171,12 @@ export function QuickInputBar() {
               </SelectTrigger>
               <SelectContent>
                 {activeAccounts.map((a) => (
-                  <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
+                  <SelectItem key={a.id} value={a.id}>
+                    <span className="flex items-center gap-2">
+                      <span className={cn("h-2.5 w-2.5 rounded-full", accountCardColorClass(a.color).split(" ")[0]?.replace("border-", "bg-") || "bg-slate-400")} />
+                      {a.name}
+                    </span>
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -173,20 +189,35 @@ export function QuickInputBar() {
               </SelectTrigger>
               <SelectContent>
                 {activeAccounts.map((a) => (
-                  <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
+                  <SelectItem key={a.id} value={a.id}>
+                    <span className="flex items-center gap-2">
+                      <span className={cn("h-2.5 w-2.5 rounded-full", `bg-${a.color}-500`)} />
+                      {a.name}
+                    </span>
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
 
-            <Select value={categoryId || selectedCategories[0]?.id || ""} onValueChange={(v) => setCategoryId(v ?? "")}>
-              <SelectTrigger className="h-9 w-[140px] text-sm">
+            <Select value={currentCategoryId} onValueChange={(v) => setCategoryId(v ?? "")}>
+              <SelectTrigger className={cn(
+                "h-9 w-[140px] text-sm",
+                currentCategory && categoryBadgeClass(normalizeCategoryColor(currentCategory.color))
+              )}>
                 <SelectValue placeholder="Категория">
-                  {findName(selectedCategories, categoryId || selectedCategories[0]?.id || "", "Категория")}
+                  {currentCategory?.name ?? "Категория"}
                 </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {selectedCategories.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                  <SelectItem key={c.id} value={c.id}>
+                    <span className={cn(
+                      "inline-flex items-center gap-2 rounded-full px-2 py-0.5 text-xs font-medium",
+                      categoryBadgeClass(normalizeCategoryColor(c.color))
+                    )}>
+                      {c.name}
+                    </span>
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
