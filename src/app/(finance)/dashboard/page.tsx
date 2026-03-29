@@ -450,7 +450,7 @@ export default function DashboardPage() {
               ) : (
                 <ChartContainer
                   config={incomePieConfig}
-                  className="mx-auto aspect-square w-full"
+                  className="mx-auto h-[160px] w-full max-w-[200px]"
                 >
                   <PieChart>
                     <ChartTooltip
@@ -499,7 +499,7 @@ export default function DashboardPage() {
               ) : (
                 <ChartContainer
                   config={expensePieConfig}
-                  className="mx-auto aspect-square w-full"
+                  className="mx-auto h-[160px] w-full max-w-[200px]"
                 >
                   <PieChart>
                     <ChartTooltip
