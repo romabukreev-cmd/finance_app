@@ -83,7 +83,13 @@ export function QuickInputBar() {
     setMessage(null)
   }
 
-  if (activeAccounts.length === 0) return null
+  if (activeAccounts.length === 0) {
+    return (
+      <div className="rounded-2xl border bg-card p-4 text-center text-sm text-muted-foreground">
+        Добавь счёт в <a href="/settings" className="underline">Настройках</a>, чтобы вносить операции
+      </div>
+    )
+  }
 
   return (
     <form onSubmit={handleSubmit} className="rounded-2xl border bg-card p-3 ring-1 ring-foreground/5">
