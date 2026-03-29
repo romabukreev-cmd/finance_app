@@ -192,7 +192,7 @@ function RightPanel({
                   hours > 0 ? `${colors.bg} ${colors.border}` : "border-border"
                 )}
               >
-                <span className={cn("text-xs font-medium truncate", hours > 0 ? colors.text : "text-muted-foreground")}>
+                <span className={cn("min-w-[72px] text-xs font-medium", hours > 0 ? colors.text : "text-muted-foreground")}>
                   {dir.name}
                 </span>
                 <div className="ml-auto flex items-center gap-1">
@@ -305,7 +305,7 @@ function DayBlock({
         </div>
       </CardHeader>
       <CardContent>
-        <div className="grid gap-6 xl:grid-cols-[1fr_320px]">
+        <div className="grid gap-6 xl:grid-cols-[1fr_400px]">
           {/* Левая колонка — мысли */}
           <div className="space-y-3">
             {entry.thoughts.map((thought) => (
@@ -476,14 +476,14 @@ export default function DiaryPage() {
 
   if (!hydrated) {
     return (
-      <div className="mx-auto max-w-5xl py-20 text-center text-muted-foreground">
+      <div className="mx-auto max-w-7xl py-20 text-center text-muted-foreground">
         Загрузка...
       </div>
     )
   }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-3">
+    <div className="mx-auto max-w-7xl space-y-3">
       <PageHeader
         title="Дневник"
         description="Мысли, привычки и рабочие часы — каждый день."
