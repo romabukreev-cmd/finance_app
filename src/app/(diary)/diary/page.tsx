@@ -217,9 +217,11 @@ function RightPanel({
 function DayBlock({
   date,
   isToday,
+  onCollapse,
 }: {
   date: string
   isToday: boolean
+  onCollapse?: () => void
 }) {
   const {
     categories,
@@ -252,9 +254,19 @@ function DayBlock({
     <Card className={cn(isToday && "border-2 border-primary/20")}>
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle className={isToday ? "text-2xl" : "text-lg"}>
-            {isToday ? "Сегодня" : formatDateRu(date)}
-          </CardTitle>
+          {onCollapse ? (
+            <button
+              type="button"
+              onClick={onCollapse}
+              className="text-left hover:opacity-70 transition-opacity"
+            >
+              <CardTitle className="text-lg">
+                {formatDateRu(date)}
+              </CardTitle>
+            </button>
+          ) : (
+            <CardTitle className="text-2xl">Сегодня</CardTitle>
+          )}
           <button
             type="button"
             onClick={() => toggleBookmark(date)}
@@ -412,7 +424,7 @@ function DayEntry({ date, isToday }: { date: string; isToday: boolean }) {
     return <CollapsedDay date={date} onExpand={() => setExpanded(true)} />
   }
 
-  return <DayBlock date={date} isToday={isToday} />
+  return <DayBlock date={date} isToday={isToday} onCollapse={isToday ? undefined : () => setExpanded(false)} />
 }
 
 /* ────── Главная страница ────── */
