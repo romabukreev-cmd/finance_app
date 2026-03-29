@@ -444,61 +444,44 @@ export default function DashboardPage() {
                 Доли категорий доходов за выбранный месяц.
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent>
               {incomePieData.length === 0 ? (
                 <p className="text-sm text-muted-foreground">Нет доходов в выбранном месяце.</p>
               ) : (
-                <>
-                  <ChartContainer
-                    config={incomePieConfig}
-                    className="mx-auto h-[150px] w-full max-w-[180px] aspect-auto"
-                  >
-                    <PieChart>
-                      <ChartTooltip
-                        content={
-                          <ChartTooltipContent
-                            formatter={(value, name) => (
-                              <>
-                                <span className="text-muted-foreground">{String(name)}</span>
-                                <span className="font-mono font-medium text-foreground tabular-nums">
-                                  {formatMoney(Number(value))}
-                                </span>
-                              </>
-                            )}
-                          />
-                        }
-                      />
-                      <Pie
-                        data={incomePieData}
-                        dataKey="value"
-                        nameKey="name"
-                        innerRadius={46}
-                        outerRadius={80}
-                        paddingAngle={3}
-                        strokeWidth={1}
-                      >
-                        {incomePieData.map((entry) => (
-                          <Cell key={entry.categoryId} fill={entry.fill} />
-                        ))}
-                      </Pie>
-                    </PieChart>
-                  </ChartContainer>
-
-                  <div className="space-y-2">
-                    {incomePieData.slice(0, 4).map((item) => (
-                      <div key={item.categoryId} className="flex items-center justify-between text-sm">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className="h-2.5 w-2.5 rounded"
-                            style={{ backgroundColor: item.fill }}
-                          />
-                          <span>{item.name}</span>
-                        </div>
-                        <span className="font-medium">{formatMoney(item.value)}</span>
-                      </div>
-                    ))}
-                  </div>
-                </>
+                <ChartContainer
+                  config={incomePieConfig}
+                  className="mx-auto aspect-square w-full"
+                >
+                  <PieChart>
+                    <ChartTooltip
+                      content={
+                        <ChartTooltipContent
+                          formatter={(value, name) => (
+                            <>
+                              <span className="text-muted-foreground">{String(name)}</span>
+                              <span className="font-mono font-medium text-foreground tabular-nums">
+                                {formatMoney(Number(value))}
+                              </span>
+                            </>
+                          )}
+                        />
+                      }
+                    />
+                    <Pie
+                      data={incomePieData}
+                      dataKey="value"
+                      nameKey="name"
+                      innerRadius="40%"
+                      outerRadius="75%"
+                      paddingAngle={3}
+                      strokeWidth={1}
+                    >
+                      {incomePieData.map((entry) => (
+                        <Cell key={entry.categoryId} fill={entry.fill} />
+                      ))}
+                    </Pie>
+                  </PieChart>
+                </ChartContainer>
               )}
             </CardContent>
           </Card>
@@ -510,61 +493,44 @@ export default function DashboardPage() {
                 Доли категорий расходов за выбранный месяц.
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent>
               {expensePieData.length === 0 ? (
                 <p className="text-sm text-muted-foreground">Нет расходов в выбранном месяце.</p>
               ) : (
-                <>
-                  <ChartContainer
-                    config={expensePieConfig}
-                    className="mx-auto h-[150px] w-full max-w-[180px] aspect-auto"
-                  >
-                    <PieChart>
-                      <ChartTooltip
-                        content={
-                          <ChartTooltipContent
-                            formatter={(value, name) => (
-                              <>
-                                <span className="text-muted-foreground">{String(name)}</span>
-                                <span className="font-mono font-medium text-foreground tabular-nums">
-                                  {formatMoney(Number(value))}
-                                </span>
-                              </>
-                            )}
-                          />
-                        }
-                      />
-                      <Pie
-                        data={expensePieData}
-                        dataKey="value"
-                        nameKey="name"
-                        innerRadius={46}
-                        outerRadius={80}
-                        paddingAngle={3}
-                        strokeWidth={1}
-                      >
-                        {expensePieData.map((entry) => (
-                          <Cell key={entry.categoryId} fill={entry.fill} />
-                        ))}
-                      </Pie>
-                    </PieChart>
-                  </ChartContainer>
-
-                  <div className="space-y-2">
-                    {expensePieData.slice(0, 4).map((item) => (
-                      <div key={item.categoryId} className="flex items-center justify-between text-sm">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className="h-2.5 w-2.5 rounded"
-                            style={{ backgroundColor: item.fill }}
-                          />
-                          <span>{item.name}</span>
-                        </div>
-                        <span className="font-medium">{formatMoney(item.value)}</span>
-                      </div>
-                    ))}
-                  </div>
-                </>
+                <ChartContainer
+                  config={expensePieConfig}
+                  className="mx-auto aspect-square w-full"
+                >
+                  <PieChart>
+                    <ChartTooltip
+                      content={
+                        <ChartTooltipContent
+                          formatter={(value, name) => (
+                            <>
+                              <span className="text-muted-foreground">{String(name)}</span>
+                              <span className="font-mono font-medium text-foreground tabular-nums">
+                                {formatMoney(Number(value))}
+                              </span>
+                            </>
+                          )}
+                        />
+                      }
+                    />
+                    <Pie
+                      data={expensePieData}
+                      dataKey="value"
+                      nameKey="name"
+                      innerRadius="40%"
+                      outerRadius="75%"
+                      paddingAngle={3}
+                      strokeWidth={1}
+                    >
+                      {expensePieData.map((entry) => (
+                        <Cell key={entry.categoryId} fill={entry.fill} />
+                      ))}
+                    </Pie>
+                  </PieChart>
+                </ChartContainer>
               )}
             </CardContent>
           </Card>
