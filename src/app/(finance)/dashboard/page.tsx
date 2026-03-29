@@ -10,6 +10,7 @@ import {
 } from "lucide-react"
 import { CartesianGrid, Cell, Line, LineChart, Pie, PieChart, XAxis } from "recharts"
 import { useFinance } from "@/components/finance/finance-provider"
+import { QuickInputBar } from "@/components/finance/quick-input-bar"
 import { QuickOperationDialog } from "@/components/finance/quick-operation-dialog"
 import { PageHeader } from "@/components/layout/page-header"
 import { accountCardColorClass } from "@/lib/finance/account-colors"
@@ -276,46 +277,16 @@ export default function DashboardPage() {
         description="Визуальный обзор выбранного месяца: деньги, динамика и структура трат."
         descriptionClassName="text-base md:text-lg"
         actions={
-          <>
-            <Input
-              className="h-14 w-[220px] text-xl font-semibold"
-              type="month"
-              value={selectedMonth}
-              onChange={(event) => setSelectedMonth(event.target.value)}
-            />
-            <Button
-              className="h-14 gap-2 px-6 text-xl font-semibold bg-emerald-600 text-white hover:bg-emerald-700"
-              onClick={() => openQuickDialog("income")}
-            >
-              <ArrowUpCircle className="h-5 w-5" />
-              Доход
-            </Button>
-            <Button
-              className="h-14 gap-2 px-6 text-xl font-semibold bg-rose-600 text-white hover:bg-rose-700"
-              onClick={() => openQuickDialog("expense")}
-            >
-              <ArrowDownCircle className="h-5 w-5" />
-              Расход
-            </Button>
-            <Button
-              variant="outline"
-              className="h-14 gap-2 px-6 text-xl font-semibold"
-              onClick={() => openQuickDialog("transfer")}
-            >
-              <ArrowUpDown className="h-5 w-5" />
-              Перевод
-            </Button>
-          </>
+          <Input
+            className="h-10 w-[180px] text-sm font-semibold"
+            type="month"
+            value={selectedMonth}
+            onChange={(event) => setSelectedMonth(event.target.value)}
+          />
         }
       />
 
-      {quickDialogOpen ? (
-        <QuickOperationDialog
-          open={quickDialogOpen}
-          type={quickType}
-          onOpenChange={setQuickDialogOpen}
-        />
-      ) : null}
+      <QuickInputBar />
 
       <section className="grid gap-4 xl:grid-cols-12">
         <div className="space-y-4 xl:col-span-3">
