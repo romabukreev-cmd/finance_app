@@ -450,7 +450,7 @@ export default function DashboardPage() {
               ) : (
                 <ChartContainer
                   config={incomePieConfig}
-                  className="mx-auto h-[160px] w-full max-w-[200px]"
+                  className="mx-auto h-[180px] w-full max-w-[220px] aspect-auto"
                 >
                   <PieChart>
                     <ChartTooltip
@@ -471,8 +471,8 @@ export default function DashboardPage() {
                       data={incomePieData}
                       dataKey="value"
                       nameKey="name"
-                      innerRadius="40%"
-                      outerRadius="75%"
+                      innerRadius={40}
+                      outerRadius={70}
                       paddingAngle={3}
                       strokeWidth={1}
                     >
@@ -499,7 +499,7 @@ export default function DashboardPage() {
               ) : (
                 <ChartContainer
                   config={expensePieConfig}
-                  className="mx-auto h-[160px] w-full max-w-[200px]"
+                  className="mx-auto h-[180px] w-full max-w-[220px] aspect-auto"
                 >
                   <PieChart>
                     <ChartTooltip
@@ -520,8 +520,8 @@ export default function DashboardPage() {
                       data={expensePieData}
                       dataKey="value"
                       nameKey="name"
-                      innerRadius="40%"
-                      outerRadius="75%"
+                      innerRadius={40}
+                      outerRadius={70}
                       paddingAngle={3}
                       strokeWidth={1}
                     >
