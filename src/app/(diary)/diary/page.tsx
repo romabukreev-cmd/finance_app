@@ -635,10 +635,10 @@ function CollapsedDay({
 
 /* ────── Обёртка дня (свёрнутый/развёрнутый) ────── */
 
-function DayEntry({ date }: { date: string }) {
+function DayEntry({ date, today }: { date: string; today: string }) {
   const { entries } = useDiary()
   const entry = entries.find((e) => e.date === date)
-  const isToday = date === todayIsoDate()
+  const isToday = date === today
 
   const hasContent = entry && (
     entry.thoughts.length > 0 ||
@@ -720,7 +720,7 @@ export default function DiaryPage() {
       />
 
       {allDates.map((date) => (
-        <DayEntry key={date} date={date} />
+        <DayEntry key={date} date={date} today={today} />
       ))}
     </div>
   )
