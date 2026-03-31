@@ -718,6 +718,8 @@ export default function DiaryPage() {
         }
       />
 
+      <p className="text-xs text-muted-foreground">debug: today={today}, dates={allDates.length}, first={allDates[0]}</p>
+
       {allDates.map((date) => (
         <DayEntry key={date} date={date} isToday={date === today} />
       ))}
