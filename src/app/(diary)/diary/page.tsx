@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import {
   Bookmark,
   Clock,
@@ -647,7 +647,11 @@ function DayEntry({ date, isToday }: { date: string; isToday: boolean }) {
     entry.isBookmarked
   )
 
-  const [expanded, setExpanded] = useState(isToday || !!hasContent)
+  const [expanded, setExpanded] = useState(!!hasContent)
+
+  useEffect(() => {
+    if (isToday) setExpanded(true)
+  }, [isToday])
 
   if (!expanded) {
     return <CollapsedDay date={date} onExpand={() => setExpanded(true)} />
