@@ -9,12 +9,16 @@ export function formatMoney(value: number) {
 }
 
 export function todayIsoDate() {
-  const d = new Date(Date.now() + 4 * 60 * 60 * 1000)
-  return d.toISOString().slice(0, 10)
+  const d = new Date()
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, "0")
+  const day = String(d.getDate()).padStart(2, "0")
+  return `${y}-${m}-${day}`
 }
 
 export function currentMonth() {
-  return new Date().toISOString().slice(0, 7)
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
 }
 
 export function monthKey(dateValue: string) {
