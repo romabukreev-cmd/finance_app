@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useMemo, useRef, useState } from "react"
 import {
   Bookmark,
   Clock,
@@ -635,9 +635,10 @@ function CollapsedDay({
 
 /* ────── Обёртка дня (свёрнутый/развёрнутый) ────── */
 
-function DayEntry({ date, isToday }: { date: string; isToday: boolean }) {
+function DayEntry({ date }: { date: string }) {
   const { entries } = useDiary()
   const entry = entries.find((e) => e.date === date)
+  const isToday = date === todayIsoDate()
 
   const hasContent = entry && (
     entry.thoughts.length > 0 ||
@@ -647,17 +648,17 @@ function DayEntry({ date, isToday }: { date: string; isToday: boolean }) {
     entry.isBookmarked
   )
 
-  const [expanded, setExpanded] = useState(!!hasContent)
+  const [expanded, setExpanded] = useState(isToday || !!hasContent)
 
-  useEffect(() => {
-    if (isToday) setExpanded(true)
-  }, [isToday])
+  if (isToday) {
+    return <DayBlock date={date} isToday />
+  }
 
   if (!expanded) {
     return <CollapsedDay date={date} onExpand={() => setExpanded(true)} />
   }
 
-  return <DayBlock date={date} isToday={isToday} onCollapse={isToday ? undefined : () => setExpanded(false)} />
+  return <DayBlock date={date} isToday={false} onCollapse={() => setExpanded(false)} />
 }
 
 /* ────── Главная страница ────── */
@@ -718,10 +719,8 @@ export default function DiaryPage() {
         }
       />
 
-      <p className="text-xs text-muted-foreground">debug: today={today}, dates={allDates.length}, first={allDates[0]}</p>
-
       {allDates.map((date) => (
-        <DayEntry key={date} date={date} isToday={date === today} />
+        <DayEntry key={date} date={date} />
       ))}
     </div>
   )
