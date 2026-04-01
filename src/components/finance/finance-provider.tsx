@@ -684,13 +684,6 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     let result: ActionResult = { ok: true }
 
     setState((previous) => {
-      const amount = normalizeMoney(input.amount)
-
-      if (amount <= 0) {
-        result = { ok: false, error: "Сумма должна быть больше нуля." }
-        return previous
-      }
-
       if (!input.transactionDate) {
         result = { ok: false, error: "Выбери дату операции." }
         return previous
@@ -698,6 +691,51 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
 
       const timestamp = nowIso()
       const note = input.note?.trim() || null
+
+      if (input.type === "adjustment") {
+        const signedAmount = normalizeMoney(input.signedAmount)
+
+        if (signedAmount === 0) {
+          result = { ok: false, error: "Дельта корректировки не может быть нулевой." }
+          return previous
+        }
+
+        const hasAccount = previous.accounts.some((account) => account.id === input.accountId)
+
+        if (!hasAccount) {
+          result = { ok: false, error: "Выбери корректный счет." }
+          return previous
+        }
+
+        const transaction: Transaction = {
+          id: createId(),
+          transactionDate: input.transactionDate,
+          type: "adjustment",
+          accountId: input.accountId,
+          categoryId: null,
+          amount: Math.abs(signedAmount),
+          signedAmount,
+          transferId: null,
+          transferDirection: null,
+          note,
+          createdAt: timestamp,
+          updatedAt: timestamp,
+        }
+
+        syncAfter(() => api.transactions.create(input))
+
+        return {
+          ...previous,
+          transactions: [...previous.transactions, transaction],
+        }
+      }
+
+      const amount = normalizeMoney(input.amount)
+
+      if (amount <= 0) {
+        result = { ok: false, error: "Сумма должна быть больше нуля." }
+        return previous
+      }
 
       if (input.type === "transfer") {
         if (input.fromAccountId === input.toAccountId) {
@@ -758,44 +796,6 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      if (input.type === "adjustment") {
-        const signedAmount = normalizeMoney(input.signedAmount)
-
-        if (signedAmount === 0) {
-          result = { ok: false, error: "Дельта корректировки не может быть нулевой." }
-          return previous
-        }
-
-        const hasAccount = previous.accounts.some((account) => account.id === input.accountId)
-
-        if (!hasAccount) {
-          result = { ok: false, error: "Выбери корректный счет." }
-          return previous
-        }
-
-        const transaction: Transaction = {
-          id: createId(),
-          transactionDate: input.transactionDate,
-          type: "adjustment",
-          accountId: input.accountId,
-          categoryId: null,
-          amount: Math.abs(signedAmount),
-          signedAmount,
-          transferId: null,
-          transferDirection: null,
-          note,
-          createdAt: timestamp,
-          updatedAt: timestamp,
-        }
-
-        syncAfter(() => api.transactions.create(input))
-
-        return {
-          ...previous,
-          transactions: [...previous.transactions, transaction],
-        }
-      }
-
       const hasAccount = previous.accounts.some((account) => account.id === input.accountId)
       const category = previous.categories.find(
         (item) => item.id === input.categoryId && item.kind === input.type
@@ -841,19 +841,65 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     let result: ActionResult = { ok: true }
 
     setState((previous) => {
-      const amount = normalizeMoney(input.amount)
-
-      if (amount <= 0) {
-        result = { ok: false, error: "Сумма должна быть больше нуля." }
-        return previous
-      }
-
       if (!input.transactionDate) {
         result = { ok: false, error: "Выбери дату операции." }
         return previous
       }
 
       const note = input.note?.trim() || null
+
+      if (input.type === "adjustment") {
+        const signedAmount = normalizeMoney(input.signedAmount)
+
+        if (signedAmount === 0) {
+          result = { ok: false, error: "Дельта корректировки не может быть нулевой." }
+          return previous
+        }
+
+        const exists = previous.transactions.some(
+          (transaction) => transaction.id === input.id && transaction.type === "adjustment"
+        )
+
+        if (!exists) {
+          result = { ok: false, error: "Корректировка не найдена." }
+          return previous
+        }
+
+        const hasAccount = previous.accounts.some((account) => account.id === input.accountId)
+
+        if (!hasAccount) {
+          result = { ok: false, error: "Выбери корректный счет." }
+          return previous
+        }
+
+        syncAfter(() => api.transactions.update(input))
+
+        return {
+          ...previous,
+          transactions: previous.transactions.map((transaction) => {
+            if (transaction.id !== input.id) {
+              return transaction
+            }
+
+            return {
+              ...transaction,
+              transactionDate: input.transactionDate,
+              accountId: input.accountId,
+              amount: Math.abs(signedAmount),
+              signedAmount,
+              note,
+              updatedAt: nowIso(),
+            }
+          }),
+        }
+      }
+
+      const amount = normalizeMoney(input.amount)
+
+      if (amount <= 0) {
+        result = { ok: false, error: "Сумма должна быть больше нуля." }
+        return previous
+      }
 
       if (input.type === "transfer") {
         if (input.fromAccountId === input.toAccountId) {
@@ -912,52 +958,6 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
             }
 
             return transaction
-          }),
-        }
-      }
-
-      if (input.type === "adjustment") {
-        const signedAmount = normalizeMoney(input.signedAmount)
-
-        if (signedAmount === 0) {
-          result = { ok: false, error: "Дельта корректировки не может быть нулевой." }
-          return previous
-        }
-
-        const exists = previous.transactions.some(
-          (transaction) => transaction.id === input.id && transaction.type === "adjustment"
-        )
-
-        if (!exists) {
-          result = { ok: false, error: "Корректировка не найдена." }
-          return previous
-        }
-
-        const hasAccount = previous.accounts.some((account) => account.id === input.accountId)
-
-        if (!hasAccount) {
-          result = { ok: false, error: "Выбери корректный счет." }
-          return previous
-        }
-
-        syncAfter(() => api.transactions.update(input))
-
-        return {
-          ...previous,
-          transactions: previous.transactions.map((transaction) => {
-            if (transaction.id !== input.id) {
-              return transaction
-            }
-
-            return {
-              ...transaction,
-              transactionDate: input.transactionDate,
-              accountId: input.accountId,
-              amount: Math.abs(signedAmount),
-              signedAmount,
-              note,
-              updatedAt: nowIso(),
-            }
           }),
         }
       }
