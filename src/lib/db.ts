@@ -1,4 +1,9 @@
-import { Pool } from "pg"
+import { Pool, types } from "pg"
+
+// По умолчанию pg парсит тип date (OID 1082) как JS Date,
+// из-за чего String(date) даёт "Wed Apr 01" вместо "2026-04-01".
+// Возвращаем дату как строку без изменений.
+types.setTypeParser(1082, (val: string) => val)
 
 const pool = new Pool({
   host: process.env.DB_HOST || "127.0.0.1",
