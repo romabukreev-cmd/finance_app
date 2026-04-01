@@ -103,7 +103,7 @@ export function QuickInputBar() {
         <span className="mr-1 text-sm font-medium text-muted-foreground whitespace-nowrap">Новая операция:</span>
         {/* Тип */}
         <div className="flex rounded-lg border bg-muted/30 p-0.5">
-          {(["income", "expense", "transfer"] as TransactionType[]).map((t) => (
+          {(["income", "expense", "transfer"] as Array<"income" | "expense" | "transfer">).map((t) => (
             <button
               key={t}
               type="button"
