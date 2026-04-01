@@ -1,7 +1,7 @@
 ﻿"use client"
 
 import { useMemo, useState, type FormEvent } from "react"
-import { Pencil, Plus, Trash2 } from "lucide-react"
+import { Pencil, Plus, SlidersHorizontal, Trash2 } from "lucide-react"
 import { useFinance } from "@/components/finance/finance-provider"
 import { PageHeader } from "@/components/layout/page-header"
 import { Badge } from "@/components/ui/badge"
@@ -411,14 +411,15 @@ export default function TransactionsPage() {
           <CardContent>
             <form className="space-y-3" onSubmit={handleSubmit}>
               <div className="grid gap-3 lg:grid-cols-2">
-                <div className="grid grid-cols-2 gap-2 rounded-xl border bg-muted/30 p-1 sm:grid-cols-4">
+                <div className="grid grid-cols-4 gap-1 rounded-xl border bg-muted/30 p-1">
                   {TYPE_OPTIONS.map((option) => (
                     <Button
                       key={option.value}
                       type="button"
                       variant="ghost"
+                      title={option.label}
                       className={cn(
-                        "h-14 text-lg font-semibold",
+                        "h-14 text-base font-semibold",
                         option.value === "income"
                           ? formType === option.value
                             ? "bg-emerald-600 text-white hover:bg-emerald-700"
@@ -438,7 +439,9 @@ export default function TransactionsPage() {
                       onClick={() => handleTypeChange(option.value)}
                       disabled={formMode === "edit"}
                     >
-                      {option.label}
+                      {option.value === "adjustment"
+                        ? <SlidersHorizontal className="h-5 w-5" />
+                        : option.label}
                     </Button>
                   ))}
                 </div>
