@@ -35,7 +35,7 @@ export function QuickInputBar() {
     [categories]
   )
 
-  const [type, setType] = useState<TransactionType>("expense")
+  const [type, setType] = useState<"income" | "expense" | "transfer">("expense")
   const [date, setDate] = useState(todayIsoDate())
   const [amount, setAmount] = useState("")
   const [accountId, setAccountId] = useState(activeAccounts[0]?.id ?? "")
