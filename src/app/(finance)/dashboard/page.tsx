@@ -153,6 +153,12 @@ export default function DashboardPage() {
       }
     }
 
+    // Накопительный эффект: каждый день суммирует всё предыдущее
+    for (let i = 1; i < points.length; i++) {
+      points[i].income += points[i - 1].income
+      points[i].expense += points[i - 1].expense
+    }
+
     return points
   }, [monthTransactions, selectedMonth])
 
@@ -346,7 +352,7 @@ export default function DashboardPage() {
             <CardHeader>
               <CardTitle>Динамика доходов и расходов</CardTitle>
               <CardDescription>
-                Линии по дням месяца. Переводы в этом графике не учитываются.
+                Накопительный итог по дням месяца. Переводы не учитываются.
               </CardDescription>
             </CardHeader>
             <CardContent>
