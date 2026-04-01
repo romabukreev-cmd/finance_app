@@ -88,6 +88,16 @@ function monthDaysCount(monthValue: string) {
   return new Date(year, month, 0).getDate()
 }
 
+function PieSliceTooltip({ active, payload }: { active?: boolean; payload?: Array<{ name: string; value: number }> }) {
+  if (!active || !payload?.length) return null
+  return (
+    <div className="rounded-lg border bg-background px-3 py-2 shadow-md">
+      <p className="font-semibold text-foreground">{payload[0].name}</p>
+      <p className="text-sm text-muted-foreground">{formatMoney(Number(payload[0].value))}</p>
+    </div>
+  )
+}
+
 export default function DashboardPage() {
   const { hydrated, accounts, balances, categories, displayTransactions, netWorth, transactions } =
     useFinance()
@@ -437,18 +447,8 @@ export default function DashboardPage() {
                 >
                   <PieChart>
                     <ChartTooltip
-                      content={
-                        <ChartTooltipContent
-                          formatter={(value, name) => (
-                            <>
-                              <span className="text-muted-foreground">{String(name)}</span>
-                              <span className="font-mono font-medium text-foreground tabular-nums">
-                                {formatMoney(Number(value))}
-                              </span>
-                            </>
-                          )}
-                        />
-                      }
+                      isAnimationActive={false}
+                      content={<PieSliceTooltip />}
                     />
                     <Pie
                       data={incomeRows}
@@ -486,18 +486,8 @@ export default function DashboardPage() {
                 >
                   <PieChart>
                     <ChartTooltip
-                      content={
-                        <ChartTooltipContent
-                          formatter={(value, name) => (
-                            <>
-                              <span className="text-muted-foreground">{String(name)}</span>
-                              <span className="font-mono font-medium text-foreground tabular-nums">
-                                {formatMoney(Number(value))}
-                              </span>
-                            </>
-                          )}
-                        />
-                      }
+                      isAnimationActive={false}
+                      content={<PieSliceTooltip />}
                     />
                     <Pie
                       data={expenseRows}
