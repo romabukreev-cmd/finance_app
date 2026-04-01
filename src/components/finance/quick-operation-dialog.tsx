@@ -23,11 +23,11 @@ import type { TransactionType } from "@/lib/finance/types"
 
 type QuickOperationDialogProps = {
   open: boolean
-  type: TransactionType
+  type: "income" | "expense" | "transfer"
   onOpenChange: (open: boolean) => void
 }
 
-function dialogTitle(type: TransactionType) {
+function dialogTitle(type: "income" | "expense" | "transfer") {
   if (type === "income") {
     return "Новый доход"
   }
