@@ -14,6 +14,7 @@ import { QuickInputBar } from "@/components/finance/quick-input-bar"
 import { QuickOperationDialog } from "@/components/finance/quick-operation-dialog"
 import { PageHeader } from "@/components/layout/page-header"
 import { accountCardColorClass } from "@/lib/finance/account-colors"
+import { categoryColorHex, normalizeCategoryColor } from "@/lib/finance/category-colors"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -217,23 +218,11 @@ export default function DashboardPage() {
       )
         .map(([categoryId, value]) => {
           const category = categories.find((item) => item.id === categoryId)
-          return {
-            categoryId,
-            name: category?.name ?? "Прочее",
-            value,
-          }
+          const color = categoryColorHex(normalizeCategoryColor(category?.color))
+          return { categoryId, name: category?.name ?? "Прочее", value, fill: color }
         })
         .sort((left, right) => right.value - left.value),
     [categories, monthTransactions]
-  )
-
-  const expensePieData = useMemo(
-    () =>
-      expenseRows.map((item, index) => ({
-        ...item,
-        fill: `var(--color-chart-${(index % 5) + 1})`,
-      })),
-    [expenseRows]
   )
 
   const incomeRows = useMemo(
@@ -249,23 +238,11 @@ export default function DashboardPage() {
       )
         .map(([categoryId, value]) => {
           const category = categories.find((item) => item.id === categoryId)
-          return {
-            categoryId,
-            name: category?.name ?? "Прочее",
-            value,
-          }
+          const color = categoryColorHex(normalizeCategoryColor(category?.color))
+          return { categoryId, name: category?.name ?? "Прочее", value, fill: color }
         })
         .sort((left, right) => right.value - left.value),
     [categories, monthTransactions]
-  )
-
-  const incomePieData = useMemo(
-    () =>
-      incomeRows.map((item, index) => ({
-        ...item,
-        fill: `var(--color-chart-${(index % 5) + 1})`,
-      })),
-    [incomeRows]
   )
 
   const recentOperations = useMemo(
@@ -451,7 +428,7 @@ export default function DashboardPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {incomePieData.length === 0 ? (
+              {incomeRows.length === 0 ? (
                 <p className="text-sm text-muted-foreground">Нет доходов в выбранном месяце.</p>
               ) : (
                 <ChartContainer
@@ -474,7 +451,7 @@ export default function DashboardPage() {
                       }
                     />
                     <Pie
-                      data={incomePieData}
+                      data={incomeRows}
                       dataKey="value"
                       nameKey="name"
                       innerRadius={40}
@@ -482,7 +459,7 @@ export default function DashboardPage() {
                       paddingAngle={3}
                       strokeWidth={1}
                     >
-                      {incomePieData.map((entry) => (
+                      {incomeRows.map((entry) => (
                         <Cell key={entry.categoryId} fill={entry.fill} />
                       ))}
                     </Pie>
@@ -500,7 +477,7 @@ export default function DashboardPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {expensePieData.length === 0 ? (
+              {expenseRows.length === 0 ? (
                 <p className="text-sm text-muted-foreground">Нет расходов в выбранном месяце.</p>
               ) : (
                 <ChartContainer
@@ -523,7 +500,7 @@ export default function DashboardPage() {
                       }
                     />
                     <Pie
-                      data={expensePieData}
+                      data={expenseRows}
                       dataKey="value"
                       nameKey="name"
                       innerRadius={40}
@@ -531,7 +508,7 @@ export default function DashboardPage() {
                       paddingAngle={3}
                       strokeWidth={1}
                     >
-                      {expensePieData.map((entry) => (
+                      {expenseRows.map((entry) => (
                         <Cell key={entry.categoryId} fill={entry.fill} />
                       ))}
                     </Pie>

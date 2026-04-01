@@ -65,3 +65,26 @@ export function getCategoryColorOption(color: CategoryColor) {
 export function categoryBadgeClass(color: CategoryColor) {
   return CATEGORY_BADGE_CLASS_BY_COLOR[color]
 }
+
+const CATEGORY_COLOR_HEX: Record<CategoryColor, string> = {
+  gray:   "#64748b",
+  brown:  "#92400e",
+  orange: "#f97316",
+  amber:  "#f59e0b",
+  yellow: "#facc15",
+  lime:   "#84cc16",
+  green:  "#10b981",
+  teal:   "#14b8a6",
+  cyan:   "#06b6d4",
+  sky:    "#0ea5e9",
+  blue:   "#3b82f6",
+  indigo: "#6366f1",
+  purple: "#8b5cf6",
+  pink:   "#ec4899",
+  rose:   "#f43f5e",
+  red:    "#ef4444",
+}
+
+export function categoryColorHex(color: CategoryColor): string {
+  return CATEGORY_COLOR_HEX[color]
+}
