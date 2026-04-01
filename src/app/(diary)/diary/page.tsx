@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import {
   Bookmark,
   Clock,
@@ -663,31 +663,48 @@ function DayEntry({ date, today }: { date: string; today: string }) {
 
 /* ────── Главная страница ────── */
 
+function localDate(offset = 0) {
+  const d = new Date()
+  d.setDate(d.getDate() + offset)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+}
+
+function buildDateRange(from: string, to: string) {
+  const dates: string[] = []
+  const start = new Date(from + "T12:00:00")
+  const end = new Date(to + "T12:00:00")
+  const d = new Date(end)
+  while (d >= start) {
+    const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+    dates.push(iso)
+    d.setDate(d.getDate() - 1)
+  }
+  return dates
+}
+
 export default function DiaryPage() {
   const { hydrated } = useDiary()
-  const today = todayIsoDate()
 
-  const [periodFrom, setPeriodFrom] = useState(() => {
-    const d = new Date()
-    d.setDate(d.getDate() - 30)
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
-  })
-  const [periodTo, setPeriodTo] = useState(today)
+  const [periodFrom, setPeriodFrom] = useState("2000-01-01")
+  const [periodTo, setPeriodTo] = useState("2000-01-01")
+  const [today, setToday] = useState("2000-01-01")
+  const [initialized, setInitialized] = useState(false)
+
+  useEffect(() => {
+    const t = localDate(0)
+    const f = localDate(-30)
+    setToday(t)
+    setPeriodTo(t)
+    setPeriodFrom(f)
+    setInitialized(true)
+  }, [])
 
   const allDates = useMemo(() => {
-    const dates: string[] = []
-    const start = new Date(periodFrom + "T00:00:00")
-    const end = new Date(periodTo + "T00:00:00")
+    if (!initialized) return []
+    return buildDateRange(periodFrom, periodTo)
+  }, [periodFrom, periodTo, initialized])
 
-    const d = new Date(end)
-    while (d >= start) {
-      dates.push(d.toISOString().slice(0, 10))
-      d.setDate(d.getDate() - 1)
-    }
-    return dates
-  }, [periodFrom, periodTo])
-
-  if (!hydrated) {
+  if (!hydrated || !initialized) {
     return (
       <div className="mx-auto max-w-7xl py-20 text-center text-muted-foreground">
         Загрузка...
