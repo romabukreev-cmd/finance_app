@@ -29,6 +29,7 @@ import type {
 } from "@/lib/finance/types"
 import { normalizeAccountColor } from "@/lib/finance/account-colors"
 import { normalizeCategoryColor } from "@/lib/finance/category-colors"
+import { api } from "@/lib/finance/api"
 
 const STORAGE_KEY = "finance-mvp:state:v1"
 const AUTO_BACKUPS_KEY = "finance-mvp:auto-backups:v1"
@@ -350,45 +351,27 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   const [autoBackups, setAutoBackups] = useState<FinanceBackup[]>([])
   const [hydrated, setHydrated] = useState(false)
 
-  useEffect(() => {
-    let nextState = createInitialState()
-
+  const refetchAll = useCallback(async () => {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY)
-
-      if (raw) {
-        nextState = normalizeState(JSON.parse(raw))
-      }
-    } catch {
-      nextState = createInitialState()
+      const [accounts, categories, transactions] = await Promise.all([
+        api.accounts.list(),
+        api.categories.list(),
+        api.transactions.list(),
+      ])
+      setState({ accounts, categories, transactions })
+    } catch (err) {
+      console.error("Failed to load from API:", err)
     }
-
-    const savedBackups = keepRecentAutoBackups(readAutoBackups())
-    const today = todayLocalDate()
-    const lastBackupDay = localStorage.getItem(AUTO_BACKUP_LAST_DAY_KEY)
-
-    let nextBackups = savedBackups
-
-    if (lastBackupDay !== today) {
-      const dailyBackup = buildBackup(nextState)
-      nextBackups = keepRecentAutoBackups([dailyBackup, ...savedBackups])
-      localStorage.setItem(AUTO_BACKUPS_KEY, JSON.stringify(nextBackups))
-      localStorage.setItem(AUTO_BACKUP_LAST_DAY_KEY, today)
-    }
-
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setState(nextState)
-    setAutoBackups(nextBackups)
-    setHydrated(true)
   }, [])
 
   useEffect(() => {
-    if (!hydrated) {
-      return
-    }
+    refetchAll().then(() => {
+      setHydrated(true)
+    })
 
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
-  }, [hydrated, state])
+    const savedBackups = keepRecentAutoBackups(readAutoBackups())
+    setAutoBackups(savedBackups)
+  }, [refetchAll])
 
   useEffect(() => {
     function handleStorageChange(event: StorageEvent) {
@@ -419,6 +402,10 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     window.addEventListener("storage", handleStorageChange)
     return () => window.removeEventListener("storage", handleStorageChange)
   }, [])
+
+  const syncAfter = useCallback((fn: () => Promise<unknown>) => {
+    fn().then(() => refetchAll()).catch((err) => console.error("API sync error:", err))
+  }, [refetchAll])
 
   const addAccount = useCallback((input: CreateAccountInput): ActionResult => {
     let result: ActionResult = { ok: true }
@@ -454,6 +441,8 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
         updatedAt: timestamp,
       }
 
+      syncAfter(() => api.accounts.create(input))
+
       return {
         ...previous,
         accounts: [...previous.accounts, newAccount],
@@ -461,7 +450,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     })
 
     return result
-  }, [])
+  }, [syncAfter])
 
   const updateAccount = useCallback((input: UpdateAccountInput): ActionResult => {
     let result: ActionResult = { ok: true }
@@ -491,6 +480,8 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
         return previous
       }
 
+      syncAfter(() => api.accounts.update(input))
+
       return {
         ...previous,
         accounts: previous.accounts.map((account) => {
@@ -513,7 +504,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     })
 
     return result
-  }, [])
+  }, [syncAfter])
 
   const deleteAccount = useCallback((accountId: string): ActionResult => {
     let result: ActionResult = { ok: true }
@@ -538,6 +529,8 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
         return previous
       }
 
+      syncAfter(() => api.accounts.delete(accountId))
+
       return {
         ...previous,
         accounts: previous.accounts.filter((account) => account.id !== accountId),
@@ -545,7 +538,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     })
 
     return result
-  }, [])
+  }, [syncAfter])
 
   const addCategory = useCallback((input: CreateCategoryInput): ActionResult => {
     let result: ActionResult = { ok: true }
@@ -581,6 +574,8 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
         updatedAt: timestamp,
       }
 
+      syncAfter(() => api.categories.create(input))
+
       return {
         ...previous,
         categories: [...previous.categories, category],
@@ -588,7 +583,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     })
 
     return result
-  }, [])
+  }, [syncAfter])
 
   const updateCategory = useCallback((input: UpdateCategoryInput): ActionResult => {
     let result: ActionResult = { ok: true }
@@ -625,6 +620,8 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
         return previous
       }
 
+      syncAfter(() => api.categories.update(input))
+
       return {
         ...previous,
         categories: previous.categories.map((category) =>
@@ -642,7 +639,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     })
 
     return result
-  }, [])
+  }, [syncAfter])
 
   const deleteCategory = useCallback((categoryId: string): ActionResult => {
     let result: ActionResult = { ok: true }
@@ -667,6 +664,8 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
         return previous
       }
 
+      syncAfter(() => api.categories.delete(categoryId))
+
       return {
         ...previous,
         categories: previous.categories.filter((category) => category.id !== categoryId),
@@ -679,7 +678,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     })
 
     return result
-  }, [])
+  }, [syncAfter])
 
   const createOperation = useCallback((input: CreateOperationInput): ActionResult => {
     let result: ActionResult = { ok: true }
@@ -751,6 +750,8 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
           updatedAt: timestamp,
         }
 
+        syncAfter(() => api.transactions.create(input))
+
         return {
           ...previous,
           transactions: [...previous.transactions, outLeg, inLeg],
@@ -787,6 +788,8 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
         updatedAt: timestamp,
       }
 
+      syncAfter(() => api.transactions.create(input))
+
       return {
         ...previous,
         transactions: [...previous.transactions, transaction],
@@ -794,7 +797,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     })
 
     return result
-  }, [])
+  }, [syncAfter])
 
   const updateOperation = useCallback((input: UpdateOperationInput): ActionResult => {
     let result: ActionResult = { ok: true }
@@ -840,6 +843,8 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
           result = { ok: false, error: "Не удалось найти обе ноги перевода." }
           return previous
         }
+
+        syncAfter(() => api.transactions.update(input))
 
         return {
           ...previous,
@@ -897,6 +902,8 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
         return previous
       }
 
+      syncAfter(() => api.transactions.update(input))
+
       return {
         ...previous,
         transactions: previous.transactions.map((transaction) => {
@@ -919,7 +926,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     })
 
     return result
-  }, [])
+  }, [syncAfter])
 
   const deleteOperation = useCallback((input: DeleteOperationInput): ActionResult => {
     let result: ActionResult = { ok: true }
@@ -935,6 +942,8 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
           result = { ok: false, error: "Перевод не найден." }
           return previous
         }
+
+        syncAfter(() => api.transactions.delete(input))
 
         return {
           ...previous,
@@ -954,6 +963,8 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
         return previous
       }
 
+      syncAfter(() => api.transactions.delete(input))
+
       return {
         ...previous,
         transactions: previous.transactions.filter(
@@ -963,7 +974,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     })
 
     return result
-  }, [])
+  }, [syncAfter])
 
   const exportBackup = useCallback(() => {
     return JSON.stringify(buildBackup(state), null, 2)
