@@ -44,6 +44,7 @@ const TYPE_OPTIONS: Array<{ value: TransactionType; label: string }> = [
   { value: "income", label: "Доход" },
   { value: "expense", label: "Расход" },
   { value: "transfer", label: "Перевод" },
+  { value: "adjustment", label: "Корректировка" },
 ]
 
 function getTypeLabel(value: TransactionType | "all") {
@@ -63,6 +64,10 @@ function typeBadgeClass(type: TransactionType) {
     return "border-rose-400 bg-white text-rose-700 dark:border-rose-700 dark:bg-transparent dark:text-rose-300"
   }
 
+  if (type === "adjustment") {
+    return "border-amber-400 bg-white text-amber-700 dark:border-amber-600 dark:bg-transparent dark:text-amber-300"
+  }
+
   return "border-border bg-muted text-foreground dark:bg-muted/40 dark:text-foreground"
 }
 
@@ -70,6 +75,8 @@ export default function TransactionsPage() {
   const {
     accounts,
     categories,
+    balances,
+    transactions,
     displayTransactions,
     createOperation,
     updateOperation,
@@ -103,6 +110,7 @@ export default function TransactionsPage() {
   const [formType, setFormType] = useState<TransactionType>("expense")
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editingTransferId, setEditingTransferId] = useState<string | null>(null)
+  const [editingOldSignedAmount, setEditingOldSignedAmount] = useState<number>(0)
   const [message, setMessage] = useState<string | null>(null)
   const [form, setForm] = useState<OperationFormState>(buildInitialForm("expense"))
 
@@ -173,6 +181,7 @@ export default function TransactionsPage() {
       setFormType("transfer")
       setEditingTransferId(operation.transferId)
       setEditingId(null)
+      setEditingOldSignedAmount(0)
       setForm({
         transactionDate: operation.transactionDate,
         amount: String(operation.amount),
@@ -185,9 +194,30 @@ export default function TransactionsPage() {
       return
     }
 
+    if (operation.type === "adjustment") {
+      const rawTx = transactions.find((t) => t.id === operation.id)
+      const oldSignedAmount = rawTx?.signedAmount ?? 0
+      const currentBalance = balances.find((b) => b.account.id === operation.accountId)?.balance ?? 0
+      setFormType("adjustment")
+      setEditingTransferId(null)
+      setEditingId(operation.id)
+      setEditingOldSignedAmount(oldSignedAmount)
+      setForm({
+        transactionDate: operation.transactionDate,
+        amount: String(currentBalance),
+        accountId: operation.accountId ?? "",
+        categoryId: "",
+        fromAccountId: "",
+        toAccountId: "",
+        note: operation.note ?? "",
+      })
+      return
+    }
+
     setFormType(operation.type)
     setEditingTransferId(null)
     setEditingId(operation.id)
+    setEditingOldSignedAmount(0)
     setForm({
       transactionDate: operation.transactionDate,
       amount: String(operation.amount),
@@ -213,7 +243,7 @@ export default function TransactionsPage() {
     const result =
       operation.type === "transfer" && operation.transferId
         ? deleteOperation({ type: "transfer", transferId: operation.transferId })
-        : deleteOperation({ type: operation.type as "income" | "expense", id })
+        : deleteOperation({ type: operation.type as "income" | "expense" | "adjustment", id })
 
     setMessage(result.ok ? "Операция удалена." : result.error)
 
@@ -268,6 +298,51 @@ export default function TransactionsPage() {
       return
     }
 
+    if (formType === "adjustment") {
+      const targetBalance = Number(form.amount.replace(",", "."))
+
+      if (!Number.isFinite(targetBalance)) {
+        setMessage("Введи корректный фактический баланс.")
+        return
+      }
+
+      const currentBalance = balances.find((b) => b.account.id === form.accountId)?.balance ?? 0
+      const baseBalance = formMode === "edit" ? currentBalance - editingOldSignedAmount : currentBalance
+      const signedAmount = Math.round((targetBalance - baseBalance) * 100) / 100
+
+      if (signedAmount === 0) {
+        setMessage("Фактический баланс совпадает с текущим — корректировка не нужна.")
+        return
+      }
+
+      const result =
+        formMode === "edit" && editingId
+          ? updateOperation({
+              type: "adjustment",
+              id: editingId,
+              transactionDate: form.transactionDate,
+              accountId: form.accountId,
+              signedAmount,
+              note: form.note,
+            })
+          : createOperation({
+              type: "adjustment",
+              transactionDate: form.transactionDate,
+              accountId: form.accountId,
+              signedAmount,
+              note: form.note,
+            })
+
+      if (!result.ok) {
+        setMessage(result.error)
+        return
+      }
+
+      setMessage(formMode === "edit" ? "Корректировка обновлена." : "Корректировка добавлена.")
+      resetForm()
+      return
+    }
+
     const result =
       formMode === "edit" && editingId
         ? updateOperation({
@@ -303,8 +378,10 @@ export default function TransactionsPage() {
     }
 
     setFormType(nextType)
+    setEditingOldSignedAmount(0)
     setForm((previous) => ({
       ...previous,
+      amount: "",
       categoryId: defaultCategoryId(nextType, incomeCategories, expenseCategories),
     }))
   }
@@ -334,14 +411,14 @@ export default function TransactionsPage() {
           <CardContent>
             <form className="space-y-3" onSubmit={handleSubmit}>
               <div className="grid gap-3 lg:grid-cols-2">
-                <div className="grid grid-cols-3 gap-2 rounded-xl border bg-muted/30 p-1">
+                <div className="grid grid-cols-2 gap-2 rounded-xl border bg-muted/30 p-1 sm:grid-cols-4">
                   {TYPE_OPTIONS.map((option) => (
                     <Button
                       key={option.value}
                       type="button"
                       variant="ghost"
                       className={cn(
-                        "h-14 text-xl font-semibold",
+                        "h-14 text-lg font-semibold",
                         option.value === "income"
                           ? formType === option.value
                             ? "bg-emerald-600 text-white hover:bg-emerald-700"
@@ -350,9 +427,13 @@ export default function TransactionsPage() {
                             ? formType === option.value
                               ? "bg-rose-600 text-white hover:bg-rose-700"
                               : "text-rose-700 hover:bg-rose-100/80 dark:text-rose-300 dark:hover:bg-rose-950/40"
-                            : formType === option.value
-                              ? "bg-slate-600 text-white hover:bg-slate-700 dark:bg-slate-500 dark:hover:bg-slate-600"
-                              : "text-slate-700 hover:bg-slate-100/80 dark:text-slate-300 dark:hover:bg-slate-900/60"
+                            : option.value === "adjustment"
+                              ? formType === option.value
+                                ? "bg-amber-500 text-white hover:bg-amber-600"
+                                : "text-amber-700 hover:bg-amber-100/80 dark:text-amber-300 dark:hover:bg-amber-950/40"
+                              : formType === option.value
+                                ? "bg-slate-600 text-white hover:bg-slate-700 dark:bg-slate-500 dark:hover:bg-slate-600"
+                                : "text-slate-700 hover:bg-slate-100/80 dark:text-slate-300 dark:hover:bg-slate-900/60"
                       )}
                       onClick={() => handleTypeChange(option.value)}
                       disabled={formMode === "edit"}
@@ -371,7 +452,79 @@ export default function TransactionsPage() {
                 </Button>
               </div>
 
-              {formType === "transfer" ? (
+              {formType === "adjustment" ? (
+                (() => {
+                  const currentBalance = balances.find((b) => b.account.id === form.accountId)?.balance ?? 0
+                  const baseBalance = formMode === "edit" ? currentBalance - editingOldSignedAmount : currentBalance
+                  const targetBalance = Number(form.amount.replace(",", "."))
+                  const delta = Number.isFinite(targetBalance) ? Math.round((targetBalance - baseBalance) * 100) / 100 : null
+
+                  return (
+                    <>
+                      <div className="grid gap-3 md:grid-cols-2">
+                        <Select
+                          value={form.accountId}
+                          onValueChange={(value) =>
+                            setForm((previous) => ({ ...previous, accountId: value ?? "" }))
+                          }
+                          disabled={formMode === "edit"}
+                        >
+                          <SelectTrigger className="w-full h-14 text-xl font-semibold">
+                            <SelectValue placeholder="Счет">
+                              {accountNameById(form.accountId)}
+                            </SelectValue>
+                          </SelectTrigger>
+                          <SelectContent>
+                            {activeAccounts.map((account) => (
+                              <SelectItem key={account.id} value={account.id}>
+                                {account.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+
+                        <Input
+                          type="date"
+                          className="h-14 text-lg"
+                          value={form.transactionDate}
+                          onChange={(event) =>
+                            setForm((previous) => ({ ...previous, transactionDate: event.target.value }))
+                          }
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <p className="text-sm text-muted-foreground">
+                          Текущий баланс счёта: <span className="font-semibold text-foreground">{formatMoney(baseBalance)}</span>
+                          {delta !== null && delta !== 0 && (
+                            <span className={cn("ml-3 font-semibold", delta > 0 ? "text-emerald-600" : "text-rose-600")}>
+                              {delta > 0 ? `+${formatMoney(delta)}` : `−${formatMoney(Math.abs(delta))}`}
+                            </span>
+                          )}
+                        </p>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          placeholder="Фактический баланс"
+                          value={form.amount}
+                          className="h-14 text-2xl font-semibold"
+                          onChange={(event) =>
+                            setForm((previous) => ({ ...previous, amount: event.target.value }))
+                          }
+                        />
+                      </div>
+
+                      <Input
+                        placeholder="Комментарий (опционально)"
+                        value={form.note}
+                        onChange={(event) =>
+                          setForm((previous) => ({ ...previous, note: event.target.value }))
+                        }
+                      />
+                    </>
+                  )
+                })()
+              ) : formType === "transfer" ? (
                 <>
                   <div className="grid gap-3 md:grid-cols-2">
                     <Select
@@ -553,6 +706,7 @@ export default function TransactionsPage() {
                 <SelectItem value="income">Доход</SelectItem>
                 <SelectItem value="expense">Расход</SelectItem>
                 <SelectItem value="transfer">Перевод</SelectItem>
+                <SelectItem value="adjustment">Корректировка</SelectItem>
               </SelectContent>
             </Select>
 
@@ -635,7 +789,7 @@ export default function TransactionsPage() {
                         : accountNameById(operation.accountId)}
                     </TableCell>
                     <TableCell>
-                      {operation.type === "transfer" ? (
+                      {operation.type === "transfer" || operation.type === "adjustment" ? (
                         "—"
                       ) : (
                         <Badge
@@ -654,14 +808,24 @@ export default function TransactionsPage() {
                         operation.type === "income"
                           ? "text-emerald-600 dark:text-emerald-400"
                           : "",
-                        operation.type === "expense" ? "text-rose-600 dark:text-rose-400" : ""
+                        operation.type === "expense" ? "text-rose-600 dark:text-rose-400" : "",
+                        operation.type === "adjustment"
+                          ? transactions.find((t) => t.id === operation.id)?.signedAmount ?? 0 >= 0
+                            ? "text-emerald-600 dark:text-emerald-400"
+                            : "text-rose-600 dark:text-rose-400"
+                          : ""
                       )}
                     >
                       {operation.type === "expense"
                         ? `−${formatMoney(operation.amount)}`
                         : operation.type === "income"
                           ? `+${formatMoney(operation.amount)}`
-                          : formatMoney(operation.amount)}
+                          : operation.type === "adjustment"
+                            ? (() => {
+                                const signed = transactions.find((t) => t.id === operation.id)?.signedAmount ?? 0
+                                return signed >= 0 ? `+${formatMoney(signed)}` : `−${formatMoney(Math.abs(signed))}`
+                              })()
+                            : formatMoney(operation.amount)}
                     </TableCell>
                     <TableCell>{operation.note ?? "—"}</TableCell>
                     <TableCell className="text-right">

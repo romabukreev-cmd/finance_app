@@ -45,6 +45,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, transferId }, { status: 201 })
   }
 
+  if (body.type === "adjustment") {
+    const { transactionDate, accountId, signedAmount, note } = body
+    const amount = Math.abs(signedAmount)
+    const { rows } = await query(
+      `INSERT INTO transactions (transaction_date, type, account_id, amount, signed_amount, note)
+       VALUES ($1, 'adjustment', $2, $3, $4, $5) RETURNING *`,
+      [transactionDate, accountId, amount, signedAmount, note || null]
+    )
+    return NextResponse.json(mapRow(rows[0]), { status: 201 })
+  }
+
   const { transactionDate, type, accountId, categoryId, amount, note } = body
   const signedAmount = type === "income" ? amount : -amount
 
@@ -72,6 +83,18 @@ export async function PUT(req: NextRequest) {
       [transactionDate, toAccountId, amount, amount, note || null, transferId]
     )
     return NextResponse.json({ ok: true })
+  }
+
+  if (body.type === "adjustment") {
+    const { id, transactionDate, accountId, signedAmount, note } = body
+    const amount = Math.abs(signedAmount)
+    const { rows } = await query(
+      `UPDATE transactions SET transaction_date=$1, account_id=$2, amount=$3, signed_amount=$4, note=$5, updated_at=NOW()
+       WHERE id=$6 RETURNING *`,
+      [transactionDate, accountId, amount, signedAmount, note || null, id]
+    )
+    if (rows.length === 0) return NextResponse.json({ error: "Not found" }, { status: 404 })
+    return NextResponse.json(mapRow(rows[0]))
   }
 
   const { id, transactionDate, accountId, categoryId, amount, note, type } = body

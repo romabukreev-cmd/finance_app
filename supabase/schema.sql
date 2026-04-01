@@ -15,7 +15,7 @@ exception
 end $$;
 
 do $$ begin
-  create type public.transaction_type as enum ('income', 'expense', 'transfer');
+  create type public.transaction_type as enum ('income', 'expense', 'transfer', 'adjustment');
 exception
   when duplicate_object then null;
 end $$;
@@ -91,6 +91,12 @@ create table if not exists public.transactions (
         (transfer_direction = 'out' and signed_amount < 0) or
         (transfer_direction = 'in' and signed_amount > 0)
       )
+    ) or (
+      type = 'adjustment'
+      and category_id is null
+      and transfer_id is null
+      and transfer_direction is null
+      and signed_amount != 0
     )
   )
 );

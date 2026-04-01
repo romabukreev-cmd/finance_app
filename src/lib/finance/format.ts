@@ -34,6 +34,10 @@ export function transactionTypeLabel(type: TransactionType) {
     return "Расход"
   }
 
+  if (type === "adjustment") {
+    return "Корректировка"
+  }
+
   return "Перевод"
 }
 

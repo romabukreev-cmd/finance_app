@@ -36,7 +36,7 @@ export type CategoryColor =
   | "rose"
   | "red"
 export type CategoryKind = "income" | "expense"
-export type TransactionType = "income" | "expense" | "transfer"
+export type TransactionType = "income" | "expense" | "transfer" | "adjustment"
 export type TransferDirection = "out" | "in"
 
 export type Account = {
@@ -160,6 +160,13 @@ export type CreateOperationInput =
       amount: number
       note?: string
     }
+  | {
+      type: "adjustment"
+      transactionDate: string
+      accountId: string
+      signedAmount: number
+      note?: string
+    }
 
 export type UpdateOperationInput =
   | {
@@ -180,7 +187,15 @@ export type UpdateOperationInput =
       amount: number
       note?: string
     }
+  | {
+      type: "adjustment"
+      id: string
+      transactionDate: string
+      accountId: string
+      signedAmount: number
+      note?: string
+    }
 
 export type DeleteOperationInput =
-  | { type: "income" | "expense"; id: string }
+  | { type: "income" | "expense" | "adjustment"; id: string }
   | { type: "transfer"; transferId: string }
