@@ -59,6 +59,8 @@ import {
   Clock,
   Trash2,
   CheckSquare,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react"
 
 // ---------------------------------------------------------------------------
@@ -152,6 +154,66 @@ function SortableTaskCard({
 // Task Card (visual — Notion-like)
 // ---------------------------------------------------------------------------
 
+function InlineTimeEditor({ task }: { task: Task }) {
+  const { updateTask } = usePlanner()
+  const [editing, setEditing] = useState(false)
+  const [h, setH] = useState(0)
+  const [m, setM] = useState(0)
+
+  const openEditor = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    setH(Math.floor(task.timerAccumulated / 3600))
+    setM(Math.floor((task.timerAccumulated % 3600) / 60))
+    setEditing(true)
+  }
+
+  const save = () => {
+    const total = Math.max(0, h) * 3600 + Math.min(59, Math.max(0, m)) * 60
+    if (total !== task.timerAccumulated) {
+      updateTask({ id: task.id, timerAccumulated: total })
+    }
+    setEditing(false)
+  }
+
+  if (editing) {
+    return (
+      <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+        <input
+          autoFocus
+          type="number"
+          min={0}
+          value={h}
+          onChange={(e) => setH(Number(e.target.value))}
+          onKeyDown={(e) => e.key === "Enter" && save()}
+          className="w-8 bg-muted rounded px-1 py-0.5 text-xs text-center outline-none tabular-nums"
+        />
+        <span className="text-xs text-muted-foreground">ч</span>
+        <input
+          type="number"
+          min={0}
+          max={59}
+          value={m}
+          onChange={(e) => setM(Number(e.target.value))}
+          onKeyDown={(e) => e.key === "Enter" && save()}
+          onBlur={save}
+          className="w-8 bg-muted rounded px-1 py-0.5 text-xs text-center outline-none tabular-nums"
+        />
+        <span className="text-xs text-muted-foreground">м</span>
+      </div>
+    )
+  }
+
+  return (
+    <button
+      onClick={openEditor}
+      className="shrink-0 flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors tabular-nums whitespace-nowrap"
+    >
+      <Clock className="size-3" />
+      {task.timerAccumulated > 0 ? formatDuration(task.timerAccumulated) : "0м"}
+    </button>
+  )
+}
+
 function TaskCard({
   task,
   isOverlay,
@@ -168,8 +230,6 @@ function TaskCard({
   const totalSubtasks = task.subtasks.length
   const progressPct = totalSubtasks > 0 ? Math.round((doneSubtasks / totalSubtasks) * 100) : 0
 
-  const hasTime = task.timerAccumulated > 0
-
   return (
     <div
       className={cn(
@@ -182,11 +242,7 @@ function TaskCard({
         <span className="font-semibold text-sm leading-tight truncate">
           {task.title}
         </span>
-        {hasTime && (
-          <span className="shrink-0 text-[10px] text-muted-foreground/60 tabular-nums whitespace-nowrap">
-            {formatDuration(task.timerAccumulated)}
-          </span>
-        )}
+        <InlineTimeEditor task={task} />
       </div>
 
       {/* Row 2: Direction badge */}
@@ -709,6 +765,246 @@ function TaskModal({
 }
 
 // ---------------------------------------------------------------------------
+// Week View
+// ---------------------------------------------------------------------------
+
+const DAY_NAMES = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
+
+function getWeekDates(offset: number): string[] {
+  const now = new Date()
+  now.setDate(now.getDate() + offset * 7)
+  const dayOfWeek = now.getDay()
+  const monday = new Date(now)
+  monday.setDate(now.getDate() - ((dayOfWeek + 6) % 7))
+  const dates: string[] = []
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(monday)
+    d.setDate(monday.getDate() + i)
+    dates.push(
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+    )
+  }
+  return dates
+}
+
+function formatShortDate(iso: string) {
+  const d = new Date(iso + "T00:00:00")
+  return d.getDate()
+}
+
+function formatMonthLabel(dates: string[]) {
+  const first = new Date(dates[0] + "T00:00:00")
+  const last = new Date(dates[6] + "T00:00:00")
+  const months = ["Янв", "Фев", "Мар", "Апр", "Май", "Июн", "Июл", "Авг", "Сен", "Окт", "Ноя", "Дек"]
+  if (first.getMonth() === last.getMonth()) {
+    return `${months[first.getMonth()]} ${first.getFullYear()}`
+  }
+  return `${months[first.getMonth()]} – ${months[last.getMonth()]} ${last.getFullYear()}`
+}
+
+function WeekView({ tasks, onOpenModal }: { tasks: Task[]; onOpenModal: (t: Task) => void }) {
+  const [weekOffset, setWeekOffset] = useState(0)
+  const dates = useMemo(() => getWeekDates(weekOffset), [weekOffset])
+  const today = getTodayDate()
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-medium text-muted-foreground">{formatMonthLabel(dates)}</span>
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="icon" className="size-8" onClick={() => setWeekOffset((p) => p - 1)}>
+            <ChevronLeft className="size-4" />
+          </Button>
+          <Button variant="ghost" size="sm" className="text-xs h-8" onClick={() => setWeekOffset(0)}>
+            Сегодня
+          </Button>
+          <Button variant="ghost" size="icon" className="size-8" onClick={() => setWeekOffset((p) => p + 1)}>
+            <ChevronRight className="size-4" />
+          </Button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-7 gap-2">
+        {dates.map((date, i) => {
+          const dayTasks = tasks.filter((t) => t.taskDate === date)
+          const isToday = date === today
+          return (
+            <div key={date} className="flex flex-col min-h-[200px]">
+              <div className={cn(
+                "text-center py-1.5 mb-2 rounded-lg text-xs font-medium",
+                isToday ? "bg-primary text-primary-foreground" : "text-muted-foreground"
+              )}>
+                <div>{DAY_NAMES[i]}</div>
+                <div className="text-lg font-bold">{formatShortDate(date)}</div>
+              </div>
+              <div className="flex-1 space-y-1.5">
+                {dayTasks.map((t) => (
+                  <div
+                    key={t.id}
+                    onClick={() => onOpenModal(t)}
+                    className="rounded-lg border bg-card p-2 cursor-pointer hover:ring-1 hover:ring-primary/30 transition-all"
+                  >
+                    <p className="text-xs font-medium truncate">{t.title}</p>
+                    {t.directionId && (() => {
+                      const dir = getDirectionById(t.directionId)
+                      if (!dir) return null
+                      const cc = directionColorClasses(dir.color)
+                      return (
+                        <span className={cn("inline-flex mt-1 rounded-md px-1.5 py-0.5 text-[9px] font-medium", cc.bg, cc.text)}>
+                          {dir.name}
+                        </span>
+                      )
+                    })()}
+                    <div className="flex items-center justify-between mt-1">
+                      <span className={cn(
+                        "inline-flex rounded-full px-1.5 py-0.5 text-[9px] font-medium",
+                        COLUMN_META[t.status].dotColor.replace("bg-", "bg-") + "/20",
+                        "text-muted-foreground"
+                      )}>
+                        <span className={cn("size-1.5 rounded-full mr-1 mt-0.5", COLUMN_META[t.status].dotColor)} />
+                        {statusLabel(t.status)}
+                      </span>
+                      {t.timerAccumulated > 0 && (
+                        <span className="text-[9px] text-muted-foreground tabular-nums">
+                          {formatDuration(t.timerAccumulated)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Calendar View
+// ---------------------------------------------------------------------------
+
+function getCalendarDays(year: number, month: number) {
+  const firstDay = new Date(year, month, 1)
+  const lastDay = new Date(year, month + 1, 0)
+  const startPad = (firstDay.getDay() + 6) % 7 // Monday-based
+  const days: Array<{ date: string; inMonth: boolean }> = []
+
+  // Padding from previous month
+  for (let i = startPad - 1; i >= 0; i--) {
+    const d = new Date(year, month, -i)
+    days.push({
+      date: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`,
+      inMonth: false,
+    })
+  }
+  // Current month
+  for (let i = 1; i <= lastDay.getDate(); i++) {
+    days.push({
+      date: `${year}-${String(month + 1).padStart(2, "0")}-${String(i).padStart(2, "0")}`,
+      inMonth: true,
+    })
+  }
+  // Padding to fill last row
+  while (days.length % 7 !== 0) {
+    const d = new Date(year, month + 1, days.length - startPad - lastDay.getDate() + 1)
+    days.push({
+      date: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`,
+      inMonth: false,
+    })
+  }
+  return days
+}
+
+const MONTH_NAMES = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"]
+
+function CalendarView({ tasks, onOpenModal }: { tasks: Task[]; onOpenModal: (t: Task) => void }) {
+  const now = new Date()
+  const [year, setYear] = useState(now.getFullYear())
+  const [month, setMonth] = useState(now.getMonth())
+  const today = getTodayDate()
+
+  const days = useMemo(() => getCalendarDays(year, month), [year, month])
+
+  const prevMonth = () => {
+    if (month === 0) { setYear((y) => y - 1); setMonth(11) } else setMonth((m) => m - 1)
+  }
+  const nextMonth = () => {
+    if (month === 11) { setYear((y) => y + 1); setMonth(0) } else setMonth((m) => m + 1)
+  }
+  const goToday = () => { setYear(now.getFullYear()); setMonth(now.getMonth()) }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-medium">{MONTH_NAMES[month]} {year}</span>
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="icon" className="size-8" onClick={prevMonth}>
+            <ChevronLeft className="size-4" />
+          </Button>
+          <Button variant="ghost" size="sm" className="text-xs h-8" onClick={goToday}>
+            Сегодня
+          </Button>
+          <Button variant="ghost" size="icon" className="size-8" onClick={nextMonth}>
+            <ChevronRight className="size-4" />
+          </Button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-7 text-center text-xs text-muted-foreground mb-1">
+        {DAY_NAMES.map((d) => <div key={d} className="py-1">{d}</div>)}
+      </div>
+
+      <div className="grid grid-cols-7 gap-px bg-border rounded-xl overflow-hidden">
+        {days.map(({ date, inMonth }) => {
+          const dayTasks = tasks.filter((t) => t.taskDate === date)
+          const isToday = date === today
+          const dayNum = Number(date.slice(8, 10))
+          return (
+            <div
+              key={date}
+              className={cn(
+                "bg-card min-h-[100px] p-1.5",
+                !inMonth && "opacity-30"
+              )}
+            >
+              <div className={cn(
+                "text-xs font-medium mb-1 size-6 flex items-center justify-center rounded-full",
+                isToday ? "bg-primary text-primary-foreground" : "text-muted-foreground"
+              )}>
+                {dayNum}
+              </div>
+              <div className="space-y-0.5">
+                {dayTasks.slice(0, 3).map((t) => {
+                  const dir = getDirectionById(t.directionId)
+                  const cc = dir ? directionColorClasses(dir.color) : null
+                  return (
+                    <div
+                      key={t.id}
+                      onClick={() => onOpenModal(t)}
+                      className={cn(
+                        "rounded px-1 py-0.5 text-[9px] truncate cursor-pointer hover:opacity-80",
+                        cc ? cn(cc.bg, cc.text) : "bg-muted text-muted-foreground"
+                      )}
+                    >
+                      {t.title}
+                    </div>
+                  )
+                })}
+                {dayTasks.length > 3 && (
+                  <div className="text-[9px] text-muted-foreground px-1">+{dayTasks.length - 3}</div>
+                )}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Main Page
 // ---------------------------------------------------------------------------
 
@@ -972,19 +1268,9 @@ export default function PlannerPage() {
           </DragOverlay>
         </DndContext>
       ) : view === "week" ? (
-        <div className="flex items-center justify-center h-64 rounded-xl border bg-card">
-          <div className="text-center space-y-2">
-            <Calendar className="size-10 mx-auto text-muted-foreground/30" />
-            <p className="text-muted-foreground">Вид "Неделя" скоро появится</p>
-          </div>
-        </div>
+        <WeekView tasks={tasks} onOpenModal={handleOpenModal} />
       ) : (
-        <div className="flex items-center justify-center h-64 rounded-xl border bg-card">
-          <div className="text-center space-y-2">
-            <Calendar className="size-10 mx-auto text-muted-foreground/30" />
-            <p className="text-muted-foreground">Вид "Календарь" скоро появится</p>
-          </div>
-        </div>
+        <CalendarView tasks={tasks} onOpenModal={handleOpenModal} />
       )}
 
       {/* Task Modal */}
