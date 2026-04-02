@@ -170,6 +170,11 @@ export default function DashboardPage() {
       points[i].expense += points[i - 1].expense
     }
 
+    // Для текущего месяца — показываем только до сегодня
+    if (selectedMonth === currentMonth()) {
+      return points.slice(0, new Date().getDate())
+    }
+
     return points
   }, [monthTransactions, selectedMonth])
 
@@ -206,13 +211,20 @@ export default function DashboardPage() {
       0
     )
 
-    return dailyDelta.map((delta, index) => {
+    const all = dailyDelta.map((delta, index) => {
       rollingValue += delta
       return {
         day: String(index + 1).padStart(2, "0"),
         netWorth: rollingValue,
       }
     })
+
+    // Для текущего месяца — показываем только до сегодня
+    if (selectedMonth === currentMonth()) {
+      return all.slice(0, new Date().getDate())
+    }
+
+    return all
   }, [accounts, selectedMonth, transactions])
 
   const expenseRows = useMemo(
