@@ -127,6 +127,7 @@ function SortableTaskCard({
 
   const style = {
     transform: CSS.Transform.toString(transform),
+    transition: "none",
     opacity: isDragging ? 0 : 1,
   }
 
@@ -421,19 +422,30 @@ function TaskModal({
             >
               <SelectTrigger className="w-full" size="sm">
                 <SelectValue placeholder="Без направления">
-                  {directionId
-                    ? DEFAULT_WORK_DIRECTIONS.find((d) => d.id === directionId)?.name ?? "Без направления"
-                    : "Без направления"}
+                  {(() => {
+                    const dir = DEFAULT_WORK_DIRECTIONS.find((d) => d.id === directionId)
+                    if (!dir) return "Без направления"
+                    const cc = directionColorClasses(dir.color)
+                    return (
+                      <span className={cn("inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium", cc.bg, cc.text)}>
+                        {dir.name}
+                      </span>
+                    )
+                  })()}
                 </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="">Без направления</SelectItem>
-                {DEFAULT_WORK_DIRECTIONS.map((d) => (
-                  <SelectItem key={d.id} value={d.id}>
-                    <span className={cn("inline-block size-2 rounded-full mr-1.5", DOT_COLOR[d.color] ?? "bg-slate-400")} />
-                    {d.name}
-                  </SelectItem>
-                ))}
+                {DEFAULT_WORK_DIRECTIONS.map((d) => {
+                  const cc = directionColorClasses(d.color)
+                  return (
+                    <SelectItem key={d.id} value={d.id}>
+                      <span className={cn("inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium", cc.bg, cc.text)}>
+                        {d.name}
+                      </span>
+                    </SelectItem>
+                  )
+                })}
               </SelectContent>
             </Select>
           </div>
@@ -450,20 +462,29 @@ function TaskModal({
               }}
             >
               <SelectTrigger className="w-full" size="sm">
-                <SelectValue>{priorityLabel(priority)}</SelectValue>
+                <SelectValue>
+                  {(() => {
+                    const pc = priorityColor(priority)
+                    const bc = PRIORITY_BADGE_COLORS[pc] ?? PRIORITY_BADGE_COLORS.gray
+                    return (
+                      <span className={cn("inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium", bc)}>
+                        {priorityLabel(priority)}
+                      </span>
+                    )
+                  })()}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
-                {TASK_PRIORITIES.map((p) => (
-                  <SelectItem key={p.value} value={p.value}>
-                    <span
-                      className={cn(
-                        "inline-block size-2 rounded-full mr-1.5",
-                        DOT_COLOR[p.color] ?? "bg-slate-400"
-                      )}
-                    />
-                    {p.label}
-                  </SelectItem>
-                ))}
+                {TASK_PRIORITIES.map((p) => {
+                  const bc = PRIORITY_BADGE_COLORS[p.color] ?? PRIORITY_BADGE_COLORS.gray
+                  return (
+                    <SelectItem key={p.value} value={p.value}>
+                      <span className={cn("inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium", bc)}>
+                        {p.label}
+                      </span>
+                    </SelectItem>
+                  )
+                })}
               </SelectContent>
             </Select>
           </div>
