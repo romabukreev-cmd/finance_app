@@ -415,7 +415,7 @@ export default function DashboardPage() {
                 <LineChart data={netWorthSeries} margin={{ left: 0, right: 8, top: 8 }}>
                   <CartesianGrid vertical={false} />
                   <XAxis dataKey="day" tickLine={false} axisLine={false} tickMargin={10} />
-                  <YAxis tickLine={false} axisLine={false} tickMargin={4} width={50} tickFormatter={(v) => v >= 1000 ? `${(v/1000).toFixed(0)}к` : String(v)} />
+                  <YAxis domain={[0, 1000000]} tickLine={false} axisLine={false} tickMargin={4} width={50} tickFormatter={(v) => v >= 1000 ? `${(v/1000).toFixed(0)}к` : String(v)} />
                   <ChartTooltip
                     content={
                       <ChartTooltipContent
