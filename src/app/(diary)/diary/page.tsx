@@ -1,6 +1,7 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import Link from "next/link"
 import {
   Bookmark,
   Clock,
@@ -337,6 +338,79 @@ function ThoughtItem({
   )
 }
 
+/* ────── Рабочие часы из планера ────── */
+
+function WorkHoursFromPlanner({
+  date,
+  workDirections,
+}: {
+  date: string
+  workDirections: Array<{ id: string; name: string; color: string }>
+}) {
+  const [hours, setHours] = useState<Record<string, number>>({})
+  const [loaded, setLoaded] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    fetch(`/api/work-hours?date=${date}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (cancelled) return
+        setHours(data[date] ?? {})
+        setLoaded(true)
+      })
+      .catch(() => setLoaded(true))
+    return () => { cancelled = true }
+  }, [date])
+
+  const totalSeconds = Object.values(hours).reduce((s, v) => s + v, 0)
+  const totalH = Math.floor(totalSeconds / 3600)
+  const totalM = Math.floor((totalSeconds % 3600) / 60)
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <h3 className="text-xs font-semibold text-muted-foreground">Рабочие часы</h3>
+        <span className="flex items-center gap-1 text-sm font-bold">
+          <Clock className="h-3.5 w-3.5" />
+          {totalH}ч {totalM}м
+        </span>
+      </div>
+      <div className="grid grid-cols-2 gap-1.5">
+        {workDirections.map((dir) => {
+          const sec = hours[dir.id] ?? 0
+          const h = Math.floor(sec / 3600)
+          const m = Math.floor((sec % 3600) / 60)
+          const colors = DIARY_CATEGORY_COLORS[dir.color] ?? DIARY_CATEGORY_COLORS.slate
+          return (
+            <div
+              key={dir.id}
+              className={cn(
+                "flex items-center gap-2 rounded-lg border p-2",
+                sec > 0 ? `${colors.bg} ${colors.border}` : "border-border"
+              )}
+            >
+              <span className={cn("min-w-[72px] text-xs font-medium", sec > 0 ? colors.text : "text-muted-foreground")}>
+                {dir.name}
+              </span>
+              <span className={cn("ml-auto text-xs tabular-nums", sec > 0 ? colors.text : "text-muted-foreground/50")}>
+                {h}ч {m}м
+              </span>
+            </div>
+          )
+        })}
+      </div>
+      <Link
+        href="/planner"
+        className="flex items-center justify-center gap-1.5 rounded-lg border border-dashed p-2 text-xs text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
+      >
+        <Clock className="size-3" />
+        Редактировать в Планере
+      </Link>
+    </div>
+  )
+}
+
 /* ────── Правая колонка (бафы/дебафы/часы) ────── */
 
 function RightPanel({
@@ -354,11 +428,9 @@ function RightPanel({
     toggleBuff,
     toggleDebuff,
     toggleBookmark,
-    setWorkLog,
   } = useDiary()
 
   const entry = getOrCreateEntry(date)
-  const totalHours = entry.workLogs.reduce((sum, w) => sum + w.hours, 0)
 
   return (
     <div className="space-y-4">
@@ -396,67 +468,8 @@ function RightPanel({
         </div>
       </div>
 
-      {/* Рабочие часы */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <h3 className="text-xs font-semibold text-muted-foreground">Рабочие часы</h3>
-          <span className="flex items-center gap-1 text-sm font-bold">
-            <Clock className="h-3.5 w-3.5" />
-            {Math.floor(totalHours)}ч {Math.round((totalHours - Math.floor(totalHours)) * 60)}м
-          </span>
-        </div>
-        <div className="grid grid-cols-2 gap-1.5">
-          {workDirections.map((dir) => {
-            const log = entry.workLogs.find((w) => w.directionId === dir.id)
-            const hours = log?.hours ?? 0
-            const colors = DIARY_CATEGORY_COLORS[dir.color] ?? DIARY_CATEGORY_COLORS.slate
-            const h = Math.floor(hours)
-            const m = Math.round((hours - h) * 60)
-            return (
-              <div
-                key={dir.id}
-                className={cn(
-                  "flex items-center gap-2 rounded-lg border p-2",
-                  hours > 0 ? `${colors.bg} ${colors.border}` : "border-border"
-                )}
-              >
-                <span className={cn("min-w-[72px] text-xs font-medium", hours > 0 ? colors.text : "text-muted-foreground")}>
-                  {dir.name}
-                </span>
-                <div className="ml-auto flex items-center gap-1">
-                  <input
-                    type="number"
-                    min="0"
-                    max="23"
-                    value={h || ""}
-                    placeholder="0"
-                    className="h-7 w-10 rounded-md border border-input bg-transparent text-center text-xs outline-none focus:border-ring focus:ring-1 focus:ring-ring/50 dark:bg-input/30"
-                    onChange={(e) => {
-                      const newH = Math.max(0, Math.min(23, Number(e.target.value) || 0))
-                      setWorkLog(date, dir.id, newH + m / 60)
-                    }}
-                  />
-                  <span className="text-[10px] text-muted-foreground">ч</span>
-                  <input
-                    type="number"
-                    min="0"
-                    max="59"
-                    step="5"
-                    value={m || ""}
-                    placeholder="0"
-                    className="h-7 w-10 rounded-md border border-input bg-transparent text-center text-xs outline-none focus:border-ring focus:ring-1 focus:ring-ring/50 dark:bg-input/30"
-                    onChange={(e) => {
-                      const newM = Math.max(0, Math.min(59, Number(e.target.value) || 0))
-                      setWorkLog(date, dir.id, h + newM / 60)
-                    }}
-                  />
-                  <span className="text-[10px] text-muted-foreground">м</span>
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      </div>
+      {/* Рабочие часы — из планера */}
+      <WorkHoursFromPlanner date={date} workDirections={workDirections} />
     </div>
   )
 }
