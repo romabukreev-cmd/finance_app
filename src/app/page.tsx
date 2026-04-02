@@ -3,6 +3,7 @@
 import Link from "next/link"
 import {
   BookOpen,
+  CalendarCheck,
   Wallet,
 } from "lucide-react"
 import { ThemeToggle } from "@/components/theme/theme-toggle"
@@ -25,6 +26,14 @@ const modules = [
     gradient: "from-violet-500 to-purple-600",
     shadow: "shadow-violet-500/25",
   },
+  {
+    href: "/planner",
+    label: "Планер",
+    description: "Задачи, подзадачи, таймер и календарь",
+    icon: CalendarCheck,
+    gradient: "from-amber-500 to-orange-600",
+    shadow: "shadow-amber-500/25",
+  },
 ]
 
 export default function HomePage() {
@@ -43,7 +52,7 @@ export default function HomePage() {
         </p>
       </div>
 
-      <div className="grid w-full max-w-2xl gap-6 sm:grid-cols-2">
+      <div className="grid w-full max-w-3xl gap-6 sm:grid-cols-3">
         {modules.map((mod) => {
           const Icon = mod.icon
           return (
