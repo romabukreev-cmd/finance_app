@@ -765,241 +765,252 @@ function TaskModal({
 }
 
 // ---------------------------------------------------------------------------
-// Week View
+// Shared: compact task card for week/calendar + droppable day column
 // ---------------------------------------------------------------------------
 
 const DAY_NAMES = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
+const MONTH_NAMES = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"]
 
-function getWeekDates(offset: number): string[] {
-  const now = new Date()
-  now.setDate(now.getDate() + offset * 7)
-  const dayOfWeek = now.getDay()
-  const monday = new Date(now)
-  monday.setDate(now.getDate() - ((dayOfWeek + 6) % 7))
-  const dates: string[] = []
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(monday)
-    d.setDate(monday.getDate() + i)
-    dates.push(
-      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
-    )
-  }
-  return dates
+function toIso(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
 }
 
-function formatShortDate(iso: string) {
-  const d = new Date(iso + "T00:00:00")
-  return d.getDate()
-}
-
-function formatMonthLabel(dates: string[]) {
-  const first = new Date(dates[0] + "T00:00:00")
-  const last = new Date(dates[6] + "T00:00:00")
-  const months = ["Янв", "Фев", "Мар", "Апр", "Май", "Июн", "Июл", "Авг", "Сен", "Окт", "Ноя", "Дек"]
-  if (first.getMonth() === last.getMonth()) {
-    return `${months[first.getMonth()]} ${first.getFullYear()}`
-  }
-  return `${months[first.getMonth()]} – ${months[last.getMonth()]} ${last.getFullYear()}`
-}
-
-function WeekView({ tasks, onOpenModal }: { tasks: Task[]; onOpenModal: (t: Task) => void }) {
-  const [weekOffset, setWeekOffset] = useState(0)
-  const dates = useMemo(() => getWeekDates(weekOffset), [weekOffset])
-  const today = getTodayDate()
+function DraggableMiniCard({ task, onOpenModal }: { task: Task; onOpenModal: (t: Task) => void }) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useSortable({
+    id: task.id,
+    animateLayoutChanges: () => false,
+  })
+  const direction = getDirectionById(task.directionId)
+  const pColor = priorityColor(task.priority)
+  const badgeClasses = PRIORITY_BADGE_COLORS[pColor] ?? PRIORITY_BADGE_COLORS.gray
+  const doneSubtasks = task.subtasks.filter((s) => s.isDone).length
+  const totalSubtasks = task.subtasks.length
+  const progressPct = totalSubtasks > 0 ? Math.round((doneSubtasks / totalSubtasks) * 100) : 0
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <span className="text-sm font-medium text-muted-foreground">{formatMonthLabel(dates)}</span>
-        <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" className="size-8" onClick={() => setWeekOffset((p) => p - 1)}>
-            <ChevronLeft className="size-4" />
-          </Button>
-          <Button variant="ghost" size="sm" className="text-xs h-8" onClick={() => setWeekOffset(0)}>
-            Сегодня
-          </Button>
-          <Button variant="ghost" size="icon" className="size-8" onClick={() => setWeekOffset((p) => p + 1)}>
-            <ChevronRight className="size-4" />
-          </Button>
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition: "none", opacity: isDragging ? 0 : 1 }}
+      className="rounded-lg border bg-card p-2.5 cursor-grab active:cursor-grabbing space-y-1.5"
+      onClick={() => onOpenModal(task)}
+      {...attributes}
+      {...listeners}
+    >
+      <div className="flex items-start justify-between gap-1">
+        <span className="text-xs font-semibold leading-tight truncate">{task.title}</span>
+        {task.timerAccumulated > 0 && (
+          <span className="shrink-0 flex items-center gap-0.5 text-[10px] text-muted-foreground tabular-nums">
+            <Clock className="size-2.5" />{formatDuration(task.timerAccumulated)}
+          </span>
+        )}
+      </div>
+      {direction && (() => {
+        const cc = directionColorClasses(direction.color)
+        return <span className={cn("inline-flex rounded-md px-1.5 py-0.5 text-[9px] font-medium", cc.bg, cc.text)}>{direction.name}</span>
+      })()}
+      <span className={cn("inline-flex rounded-md px-1.5 py-0.5 text-[9px] font-medium", badgeClasses)}>
+        {priorityLabel(task.priority)}
+      </span>
+      {totalSubtasks > 0 && (
+        <div className="flex items-center gap-1.5">
+          <div className="h-1 flex-1 overflow-hidden rounded-full bg-muted">
+            <div className="h-full rounded-full bg-emerald-500" style={{ width: `${progressPct}%` }} />
+          </div>
+          <span className="text-[9px] text-muted-foreground">{doneSubtasks}/{totalSubtasks}</span>
         </div>
-      </div>
+      )}
+    </div>
+  )
+}
 
-      <div className="grid grid-cols-7 gap-2">
-        {dates.map((date, i) => {
-          const dayTasks = tasks.filter((t) => t.taskDate === date)
-          const isToday = date === today
-          return (
-            <div key={date} className="flex flex-col min-h-[200px]">
-              <div className={cn(
-                "text-center py-1.5 mb-2 rounded-lg text-xs font-medium",
-                isToday ? "bg-primary text-primary-foreground" : "text-muted-foreground"
-              )}>
-                <div>{DAY_NAMES[i]}</div>
-                <div className="text-lg font-bold">{formatShortDate(date)}</div>
-              </div>
-              <div className="flex-1 space-y-1.5">
-                {dayTasks.map((t) => (
-                  <div
-                    key={t.id}
-                    onClick={() => onOpenModal(t)}
-                    className="rounded-lg border bg-card p-2 cursor-pointer hover:ring-1 hover:ring-primary/30 transition-all"
-                  >
-                    <p className="text-xs font-medium truncate">{t.title}</p>
-                    {t.directionId && (() => {
-                      const dir = getDirectionById(t.directionId)
-                      if (!dir) return null
-                      const cc = directionColorClasses(dir.color)
-                      return (
-                        <span className={cn("inline-flex mt-1 rounded-md px-1.5 py-0.5 text-[9px] font-medium", cc.bg, cc.text)}>
-                          {dir.name}
-                        </span>
-                      )
-                    })()}
-                    <div className="flex items-center justify-between mt-1">
-                      <span className={cn(
-                        "inline-flex rounded-full px-1.5 py-0.5 text-[9px] font-medium",
-                        COLUMN_META[t.status].dotColor.replace("bg-", "bg-") + "/20",
-                        "text-muted-foreground"
-                      )}>
-                        <span className={cn("size-1.5 rounded-full mr-1 mt-0.5", COLUMN_META[t.status].dotColor)} />
-                        {statusLabel(t.status)}
-                      </span>
-                      {t.timerAccumulated > 0 && (
-                        <span className="text-[9px] text-muted-foreground tabular-nums">
-                          {formatDuration(t.timerAccumulated)}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )
-        })}
+function DroppableDay({
+  date, dayLabel, isToday, tasks, onOpenModal, dimmed,
+}: {
+  date: string; dayLabel: React.ReactNode; isToday: boolean
+  tasks: Task[]; onOpenModal: (t: Task) => void; dimmed?: boolean
+}) {
+  const { setNodeRef, isOver } = useDroppable({ id: `day-${date}` })
+  const taskIds = useMemo(() => tasks.map((t) => t.id), [tasks])
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={cn(
+        "flex flex-col min-h-[160px] rounded-lg border p-1.5 transition-colors",
+        isOver && "bg-muted/50 ring-1 ring-primary/20",
+        dimmed && "opacity-30"
+      )}
+    >
+      <div className={cn(
+        "text-center py-1 mb-1.5 rounded-md text-xs font-medium",
+        isToday ? "bg-primary text-primary-foreground" : "text-muted-foreground"
+      )}>
+        {dayLabel}
       </div>
+      <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
+        <div className="flex-1 space-y-1.5">
+          {tasks.map((t) => (
+            <DraggableMiniCard key={t.id} task={t} onOpenModal={onOpenModal} />
+          ))}
+        </div>
+      </SortableContext>
     </div>
   )
 }
 
 // ---------------------------------------------------------------------------
-// Calendar View
+// Week View
 // ---------------------------------------------------------------------------
 
-function getCalendarDays(year: number, month: number) {
-  const firstDay = new Date(year, month, 1)
-  const lastDay = new Date(year, month + 1, 0)
-  const startPad = (firstDay.getDay() + 6) % 7 // Monday-based
-  const days: Array<{ date: string; inMonth: boolean }> = []
-
-  // Padding from previous month
-  for (let i = startPad - 1; i >= 0; i--) {
-    const d = new Date(year, month, -i)
-    days.push({
-      date: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`,
-      inMonth: false,
-    })
-  }
-  // Current month
-  for (let i = 1; i <= lastDay.getDate(); i++) {
-    days.push({
-      date: `${year}-${String(month + 1).padStart(2, "0")}-${String(i).padStart(2, "0")}`,
-      inMonth: true,
-    })
-  }
-  // Padding to fill last row
-  while (days.length % 7 !== 0) {
-    const d = new Date(year, month + 1, days.length - startPad - lastDay.getDate() + 1)
-    days.push({
-      date: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`,
-      inMonth: false,
-    })
-  }
-  return days
+function getWeekDates(offset: number): string[] {
+  const now = new Date()
+  now.setDate(now.getDate() + offset * 7)
+  const day = now.getDay()
+  const monday = new Date(now)
+  monday.setDate(now.getDate() - ((day + 6) % 7))
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(monday)
+    d.setDate(monday.getDate() + i)
+    return toIso(d)
+  })
 }
 
-const MONTH_NAMES = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"]
+function WeekView({ tasks, onOpenModal }: { tasks: Task[]; onOpenModal: (t: Task) => void }) {
+  const { updateTask, refetch } = usePlanner()
+  const [weekOffset, setWeekOffset] = useState(0)
+  const dates = useMemo(() => getWeekDates(weekOffset), [weekOffset])
+  const today = getTodayDate()
+
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
+
+  const handleDragEnd = useCallback(async (event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over) return
+    const overId = String(over.id)
+    const targetDate = overId.startsWith("day-") ? overId.slice(4) : tasks.find((t) => t.id === overId)?.taskDate
+    if (!targetDate) return
+    const task = tasks.find((t) => t.id === active.id)
+    if (!task || task.taskDate === targetDate) return
+    await updateTask({ id: task.id, taskDate: targetDate })
+    await refetch()
+  }, [tasks, updateTask, refetch])
+
+  const first = new Date(dates[0] + "T00:00:00")
+  const last = new Date(dates[6] + "T00:00:00")
+  const m = ["Янв", "Фев", "Мар", "Апр", "Май", "Июн", "Июл", "Авг", "Сен", "Окт", "Ноя", "Дек"]
+  const label = first.getMonth() === last.getMonth()
+    ? `${m[first.getMonth()]} ${first.getFullYear()}`
+    : `${m[first.getMonth()]} – ${m[last.getMonth()]} ${last.getFullYear()}`
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-medium text-muted-foreground">{label}</span>
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="icon" className="size-8" onClick={() => setWeekOffset((p) => p - 1)}><ChevronLeft className="size-4" /></Button>
+          <Button variant="ghost" size="sm" className="text-xs h-8" onClick={() => setWeekOffset(0)}>Сегодня</Button>
+          <Button variant="ghost" size="icon" className="size-8" onClick={() => setWeekOffset((p) => p + 1)}><ChevronRight className="size-4" /></Button>
+        </div>
+      </div>
+      <DndContext sensors={sensors} collisionDetection={closestCorners} onDragEnd={handleDragEnd}>
+        <div className="grid grid-cols-7 gap-2">
+          {dates.map((date, i) => (
+            <DroppableDay
+              key={date}
+              date={date}
+              isToday={date === today}
+              dayLabel={<><div>{DAY_NAMES[i]}</div><div className="text-lg font-bold">{new Date(date + "T00:00:00").getDate()}</div></>}
+              tasks={tasks.filter((t) => t.taskDate === date).sort((a, b) => a.sortOrder - b.sortOrder)}
+              onOpenModal={onOpenModal}
+            />
+          ))}
+        </div>
+        <DragOverlay dropAnimation={null}>
+          {null}
+        </DragOverlay>
+      </DndContext>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Calendar View (same layout as week, but 7 cols × N weeks of month)
+// ---------------------------------------------------------------------------
+
+function getCalendarDates(year: number, month: number) {
+  const firstDay = new Date(year, month, 1)
+  const lastDay = new Date(year, month + 1, 0)
+  const startPad = (firstDay.getDay() + 6) % 7
+  const dates: Array<{ date: string; inMonth: boolean }> = []
+  for (let i = startPad - 1; i >= 0; i--) {
+    const d = new Date(year, month, -i)
+    dates.push({ date: toIso(d), inMonth: false })
+  }
+  for (let i = 1; i <= lastDay.getDate(); i++) {
+    dates.push({ date: `${year}-${String(month + 1).padStart(2, "0")}-${String(i).padStart(2, "0")}`, inMonth: true })
+  }
+  while (dates.length % 7 !== 0) {
+    const d = new Date(year, month + 1, dates.length - startPad - lastDay.getDate() + 1)
+    dates.push({ date: toIso(d), inMonth: false })
+  }
+  return dates
+}
 
 function CalendarView({ tasks, onOpenModal }: { tasks: Task[]; onOpenModal: (t: Task) => void }) {
+  const { updateTask, refetch } = usePlanner()
   const now = new Date()
   const [year, setYear] = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth())
   const today = getTodayDate()
+  const days = useMemo(() => getCalendarDates(year, month), [year, month])
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
 
-  const days = useMemo(() => getCalendarDays(year, month), [year, month])
+  const prevMonth = () => { if (month === 0) { setYear((y) => y - 1); setMonth(11) } else setMonth((m) => m - 1) }
+  const nextMonth = () => { if (month === 11) { setYear((y) => y + 1); setMonth(0) } else setMonth((m) => m + 1) }
 
-  const prevMonth = () => {
-    if (month === 0) { setYear((y) => y - 1); setMonth(11) } else setMonth((m) => m - 1)
-  }
-  const nextMonth = () => {
-    if (month === 11) { setYear((y) => y + 1); setMonth(0) } else setMonth((m) => m + 1)
-  }
-  const goToday = () => { setYear(now.getFullYear()); setMonth(now.getMonth()) }
+  const handleDragEnd = useCallback(async (event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over) return
+    const overId = String(over.id)
+    const targetDate = overId.startsWith("day-") ? overId.slice(4) : tasks.find((t) => t.id === overId)?.taskDate
+    if (!targetDate) return
+    const task = tasks.find((t) => t.id === active.id)
+    if (!task || task.taskDate === targetDate) return
+    await updateTask({ id: task.id, taskDate: targetDate })
+    await refetch()
+  }, [tasks, updateTask, refetch])
 
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <span className="text-sm font-medium">{MONTH_NAMES[month]} {year}</span>
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" className="size-8" onClick={prevMonth}>
-            <ChevronLeft className="size-4" />
-          </Button>
-          <Button variant="ghost" size="sm" className="text-xs h-8" onClick={goToday}>
-            Сегодня
-          </Button>
-          <Button variant="ghost" size="icon" className="size-8" onClick={nextMonth}>
-            <ChevronRight className="size-4" />
-          </Button>
+          <Button variant="ghost" size="icon" className="size-8" onClick={prevMonth}><ChevronLeft className="size-4" /></Button>
+          <Button variant="ghost" size="sm" className="text-xs h-8" onClick={() => { setYear(now.getFullYear()); setMonth(now.getMonth()) }}>Сегодня</Button>
+          <Button variant="ghost" size="icon" className="size-8" onClick={nextMonth}><ChevronRight className="size-4" /></Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-7 text-center text-xs text-muted-foreground mb-1">
-        {DAY_NAMES.map((d) => <div key={d} className="py-1">{d}</div>)}
+      <div className="grid grid-cols-7 text-center text-xs text-muted-foreground">
+        {DAY_NAMES.map((d) => <div key={d} className="py-1 font-medium">{d}</div>)}
       </div>
 
-      <div className="grid grid-cols-7 gap-px bg-border rounded-xl overflow-hidden">
-        {days.map(({ date, inMonth }) => {
-          const dayTasks = tasks.filter((t) => t.taskDate === date)
-          const isToday = date === today
-          const dayNum = Number(date.slice(8, 10))
-          return (
-            <div
+      <DndContext sensors={sensors} collisionDetection={closestCorners} onDragEnd={handleDragEnd}>
+        <div className="grid grid-cols-7 gap-2">
+          {days.map(({ date, inMonth }) => (
+            <DroppableDay
               key={date}
-              className={cn(
-                "bg-card min-h-[100px] p-1.5",
-                !inMonth && "opacity-30"
-              )}
-            >
-              <div className={cn(
-                "text-xs font-medium mb-1 size-6 flex items-center justify-center rounded-full",
-                isToday ? "bg-primary text-primary-foreground" : "text-muted-foreground"
-              )}>
-                {dayNum}
-              </div>
-              <div className="space-y-0.5">
-                {dayTasks.slice(0, 3).map((t) => {
-                  const dir = getDirectionById(t.directionId)
-                  const cc = dir ? directionColorClasses(dir.color) : null
-                  return (
-                    <div
-                      key={t.id}
-                      onClick={() => onOpenModal(t)}
-                      className={cn(
-                        "rounded px-1 py-0.5 text-[9px] truncate cursor-pointer hover:opacity-80",
-                        cc ? cn(cc.bg, cc.text) : "bg-muted text-muted-foreground"
-                      )}
-                    >
-                      {t.title}
-                    </div>
-                  )
-                })}
-                {dayTasks.length > 3 && (
-                  <div className="text-[9px] text-muted-foreground px-1">+{dayTasks.length - 3}</div>
-                )}
-              </div>
-            </div>
-          )
-        })}
-      </div>
+              date={date}
+              isToday={date === today}
+              dimmed={!inMonth}
+              dayLabel={<span>{new Date(date + "T00:00:00").getDate()}</span>}
+              tasks={tasks.filter((t) => t.taskDate === date).sort((a, b) => a.sortOrder - b.sortOrder)}
+              onOpenModal={onOpenModal}
+            />
+          ))}
+        </div>
+        <DragOverlay dropAnimation={null}>{null}</DragOverlay>
+      </DndContext>
     </div>
   )
 }
