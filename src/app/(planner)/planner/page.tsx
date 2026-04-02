@@ -83,6 +83,7 @@ const PRIORITY_BADGE_COLORS: Record<string, string> = {
   red: "bg-red-500/20 text-red-400",
   violet: "bg-violet-500/20 text-violet-400",
   amber: "bg-amber-500/20 text-amber-400",
+  emerald: "bg-emerald-500/20 text-emerald-400",
   slate: "bg-slate-500/20 text-slate-400",
   gray: "bg-gray-500/20 text-gray-400",
 }
@@ -115,9 +116,11 @@ function directionColorClasses(color: string) {
 function SortableTaskCard({
   task,
   onOpenModal,
+  hidden,
 }: {
   task: Task
   onOpenModal: (task: Task) => void
+  hidden?: boolean
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useSortable({
@@ -128,7 +131,7 @@ function SortableTaskCard({
   const style = {
     transform: CSS.Transform.toString(transform),
     transition: "none",
-    opacity: isDragging ? 0 : 1,
+    opacity: isDragging || hidden ? 0 : 1,
   }
 
   return (
@@ -249,11 +252,13 @@ function KanbanColumn({
   tasks,
   onOpenModal,
   onCreateTask,
+  movingIds,
 }: {
   status: TaskStatus
   tasks: Task[]
   onOpenModal: (task: Task) => void
   onCreateTask: (status: TaskStatus, title: string) => void
+  movingIds: Set<string>
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: status })
   const [newTitle, setNewTitle] = useState("")
@@ -287,7 +292,7 @@ function KanbanColumn({
       <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
         <div className="flex flex-col gap-2 flex-1">
           {tasks.map((task) => (
-            <SortableTaskCard key={task.id} task={task} onOpenModal={onOpenModal} />
+            <SortableTaskCard key={task.id} task={task} onOpenModal={onOpenModal} hidden={movingIds.has(task.id)} />
           ))}
         </div>
       </SortableContext>
@@ -719,6 +724,7 @@ export default function PlannerPage() {
   const [modalOpen, setModalOpen] = useState(false)
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
   const [activeId, setActiveId] = useState<string | null>(null)
+  const [movingIds, setMovingIds] = useState<Set<string>>(new Set())
 
   const todayDate = useMemo(() => getTodayDate(), [])
 
@@ -796,9 +802,13 @@ export default function PlannerPage() {
   const handleDragEnd = useCallback(
     async (event: DragEndEvent) => {
       const { active, over } = event
+      const draggedId = active.id as string
       setActiveId(null)
 
       if (!over) return
+
+      // Hide the card while API call is in flight
+      setMovingIds((prev) => new Set(prev).add(draggedId))
 
       const activeTaskObj = tasks.find((t) => t.id === active.id)
       if (!activeTaskObj) return
@@ -826,7 +836,10 @@ export default function PlannerPage() {
         // Reorder within same column
         const oldIndex = targetColumn.findIndex((t) => t.id === active.id)
         const newIndex = targetColumn.findIndex((t) => t.id === overId)
-        if (oldIndex === -1 || newIndex === -1 || oldIndex === newIndex) return
+        if (oldIndex === -1 || newIndex === -1 || oldIndex === newIndex) {
+          setMovingIds((prev) => { const n = new Set(prev); n.delete(draggedId); return n })
+          return
+        }
 
         const reordered = arrayMove(targetColumn, oldIndex, newIndex)
         const items = reordered.map((t, i) => ({
@@ -863,6 +876,13 @@ export default function PlannerPage() {
 
         await reorderTasks([...items, ...sourceItems])
       }
+
+      // Show card again after refetch
+      setMovingIds((prev) => {
+        const next = new Set(prev)
+        next.delete(draggedId)
+        return next
+      })
     },
     [tasks, columnTasks, reorderTasks]
   )
@@ -934,6 +954,7 @@ export default function PlannerPage() {
                 tasks={columnTasks[status]}
                 onOpenModal={handleOpenModal}
                 onCreateTask={handleCreateTask}
+                movingIds={movingIds}
               />
             ))}
           </div>

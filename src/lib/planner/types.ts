@@ -71,7 +71,7 @@ export const TASK_PRIORITIES: Array<{ value: TaskPriority; label: string; color:
   { value: "urgent", label: "Горит", color: "red" },
   { value: "key", label: "Ключевая", color: "violet" },
   { value: "important", label: "Важная", color: "amber" },
-  { value: "regular", label: "Регулярная", color: "slate" },
+  { value: "regular", label: "Регулярная", color: "emerald" },
   { value: "normal", label: "Обычная", color: "gray" },
 ]
 
