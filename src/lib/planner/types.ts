@@ -46,6 +46,7 @@ export type UpdateTaskInput = {
   directionId?: string | null
   taskDate?: string
   sortOrder?: number
+  timerAccumulated?: number
 }
 
 export type CreateSubtaskInput = {

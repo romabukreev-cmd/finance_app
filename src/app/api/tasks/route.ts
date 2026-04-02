@@ -109,6 +109,7 @@ export async function PUT(req: NextRequest) {
   if (fields.directionId !== undefined) { sets.push(`direction_id=$${idx++}`); values.push(fields.directionId) }
   if (fields.taskDate !== undefined) { sets.push(`task_date=$${idx++}`); values.push(fields.taskDate) }
   if (fields.sortOrder !== undefined) { sets.push(`sort_order=$${idx++}`); values.push(fields.sortOrder) }
+  if (fields.timerAccumulated !== undefined) { sets.push(`timer_accumulated=$${idx++}`); values.push(fields.timerAccumulated) }
 
   if (sets.length === 0) {
     return NextResponse.json({ error: "Nothing to update" }, { status: 400 })

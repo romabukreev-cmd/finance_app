@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback, useMemo, useRef } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import { usePlanner } from "@/components/planner/planner-provider"
 import type {
   Task,
@@ -14,14 +14,11 @@ import {
   priorityLabel,
   priorityColor,
   statusLabel,
-  taskTimerSeconds,
   formatDuration,
-  formatTimerDisplay,
 } from "@/lib/planner/types"
 import { DEFAULT_WORK_DIRECTIONS, DIARY_CATEGORY_COLORS } from "@/lib/diary/constants"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
 import {
   Dialog,
@@ -46,7 +43,6 @@ import {
   useSensors,
   type DragStartEvent,
   type DragEndEvent,
-  type DragOverEvent,
 } from "@dnd-kit/core"
 import {
   SortableContext,
@@ -58,14 +54,10 @@ import { CSS } from "@dnd-kit/utilities"
 import { useDroppable } from "@dnd-kit/core"
 import {
   Plus,
-  Play,
-  Pause,
-  Square,
   X,
   Calendar,
   Clock,
   Trash2,
-  GripVertical,
   CheckSquare,
 } from "lucide-react"
 
@@ -105,25 +97,6 @@ function directionColorClasses(color: string) {
 }
 
 // ---------------------------------------------------------------------------
-// Live timer hook — ticks every second for any running task on screen
-// ---------------------------------------------------------------------------
-
-function useLiveTimerSeconds(task: Task): number {
-  const [seconds, setSeconds] = useState(() => taskTimerSeconds(task))
-
-  useEffect(() => {
-    setSeconds(taskTimerSeconds(task))
-    if (!task.timerIsRunning) return
-    const id = setInterval(() => {
-      setSeconds(taskTimerSeconds(task))
-    }, 1000)
-    return () => clearInterval(id)
-  }, [task.timerIsRunning, task.timerStartedAt, task.timerAccumulated])
-
-  return seconds
-}
-
-// ---------------------------------------------------------------------------
 // Sortable Task Card
 // ---------------------------------------------------------------------------
 
@@ -134,39 +107,43 @@ function SortableTaskCard({
   task: Task
   onOpenModal: (task: Task) => void
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id: task.id })
+  const { attributes, listeners, setNodeRef, transform, isDragging } =
+    useSortable({
+      id: task.id,
+      animateLayoutChanges: () => false,
+    })
 
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.4 : 1,
+    opacity: isDragging ? 0 : 1,
   }
 
   return (
-    <div ref={setNodeRef} style={style} {...attributes}>
-      <TaskCard task={task} onOpenModal={onOpenModal} dragListeners={listeners} />
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="cursor-grab active:cursor-grabbing"
+      onClick={() => onOpenModal(task)}
+      {...attributes}
+      {...listeners}
+    >
+      <TaskCard task={task} onOpenModal={onOpenModal} />
     </div>
   )
 }
 
 // ---------------------------------------------------------------------------
-// Task Card (visual)
+// Task Card (visual — Notion-like)
 // ---------------------------------------------------------------------------
 
 function TaskCard({
   task,
-  onOpenModal,
-  dragListeners,
   isOverlay,
 }: {
   task: Task
-  onOpenModal: (task: Task) => void
-  dragListeners?: Record<string, Function>
+  onOpenModal?: (task: Task) => void
   isOverlay?: boolean
 }) {
-  const { startTimer, pauseTimer, stopTimer } = usePlanner()
-  const timerSec = useLiveTimerSeconds(task)
   const direction = getDirectionById(task.directionId)
   const pColor = priorityColor(task.priority)
   const badgeClasses = PRIORITY_BADGE_COLORS[pColor] ?? PRIORITY_BADGE_COLORS.gray
@@ -175,43 +152,34 @@ function TaskCard({
   const totalSubtasks = task.subtasks.length
   const progressPct = totalSubtasks > 0 ? Math.round((doneSubtasks / totalSubtasks) * 100) : 0
 
-  const hasTimer = task.timerAccumulated > 0 || task.timerIsRunning
+  const hasTime = task.timerAccumulated > 0
 
   return (
     <div
       className={cn(
-        "rounded-xl border bg-card p-4 space-y-2.5 cursor-default",
-        isOverlay && "shadow-2xl ring-2 ring-primary/30"
+        "rounded-xl border bg-card p-4 space-y-2.5",
+        isOverlay && "shadow-2xl ring-2 ring-primary/30 cursor-grabbing"
       )}
     >
-      {/* Drag handle + Title */}
-      <div className="flex items-start gap-2">
-        <button
-          className="mt-0.5 shrink-0 cursor-grab text-muted-foreground/40 hover:text-muted-foreground active:cursor-grabbing"
-          {...dragListeners}
-        >
-          <GripVertical className="size-4" />
-        </button>
-        <button
-          className="text-left font-semibold text-sm leading-tight hover:underline truncate"
-          onClick={() => onOpenModal(task)}
-        >
+      {/* Row 1: Title + time */}
+      <div className="flex items-start justify-between gap-2">
+        <span className="font-semibold text-sm leading-tight truncate">
           {task.title}
-        </button>
+        </span>
+        {hasTime && (
+          <span className="shrink-0 text-[10px] text-muted-foreground/60 tabular-nums whitespace-nowrap">
+            {formatDuration(task.timerAccumulated)}
+          </span>
+        )}
       </div>
 
-      {/* Direction */}
+      {/* Row 2: Direction badge */}
       {direction && (
-        <div className="flex items-center gap-1.5">
+        <div>
           <span
             className={cn(
-              "inline-block size-2 rounded-full",
-              `bg-${direction.color}-400`
-            )}
-          />
-          <span
-            className={cn(
-              "text-xs",
+              "inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-medium",
+              directionColorClasses(direction.color).bg,
               directionColorClasses(direction.color).text
             )}
           >
@@ -220,11 +188,11 @@ function TaskCard({
         </div>
       )}
 
-      {/* Priority badge */}
+      {/* Row 3: Priority badge */}
       <div>
         <span
           className={cn(
-            "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium",
+            "inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-medium",
             badgeClasses
           )}
         >
@@ -232,49 +200,7 @@ function TaskCard({
         </span>
       </div>
 
-      {/* Timer */}
-      {hasTimer && (
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <Clock className="size-3" />
-          <span className="font-mono tabular-nums">
-            {task.timerIsRunning ? formatTimerDisplay(timerSec) : formatDuration(timerSec)}
-          </span>
-          <div className="flex items-center gap-1 ml-auto">
-            {task.timerIsRunning ? (
-              <button
-                className="rounded p-0.5 hover:bg-muted"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  pauseTimer(task.id)
-                }}
-              >
-                <Pause className="size-3" />
-              </button>
-            ) : (
-              <button
-                className="rounded p-0.5 hover:bg-muted"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  startTimer(task.id)
-                }}
-              >
-                <Play className="size-3" />
-              </button>
-            )}
-            <button
-              className="rounded p-0.5 hover:bg-muted"
-              onClick={(e) => {
-                e.stopPropagation()
-                stopTimer(task.id)
-              }}
-            >
-              <Square className="size-3" />
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Subtask progress */}
+      {/* Row 4: Subtask progress */}
       {totalSubtasks > 0 && (
         <div className="space-y-1">
           <div className="flex items-center justify-between text-[10px] text-muted-foreground">
@@ -282,7 +208,6 @@ function TaskCard({
               <CheckSquare className="size-3" />
               {doneSubtasks}/{totalSubtasks}
             </span>
-            <span>{progressPct}%</span>
           </div>
           <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
             <div
@@ -293,7 +218,7 @@ function TaskCard({
         </div>
       )}
 
-      {/* Date */}
+      {/* Row 5: Date */}
       <div className="flex items-center gap-1 text-[10px] text-muted-foreground/60">
         <Calendar className="size-3" />
         {task.taskDate}
@@ -359,7 +284,7 @@ function KanbanColumn({
         <Plus className="size-4 text-muted-foreground/50 shrink-0" />
         <input
           className="flex-1 bg-transparent text-sm placeholder:text-muted-foreground/40 outline-none"
-          placeholder="New task"
+          placeholder="Новая задача"
           value={newTitle}
           onChange={(e) => setNewTitle(e.target.value)}
           onKeyDown={handleKeyDown}
@@ -388,9 +313,6 @@ function TaskModal({
     createSubtask,
     updateSubtask,
     deleteSubtask,
-    startTimer,
-    pauseTimer,
-    stopTimer,
   } = usePlanner()
 
   const [title, setTitle] = useState("")
@@ -401,6 +323,10 @@ function TaskModal({
   const [taskDate, setTaskDate] = useState("")
   const [newSubtaskTitle, setNewSubtaskTitle] = useState("")
   const [showSubtaskInput, setShowSubtaskInput] = useState(false)
+
+  // Manual time input state
+  const [timeHours, setTimeHours] = useState(0)
+  const [timeMinutes, setTimeMinutes] = useState(0)
 
   // Sync state when task changes
   useEffect(() => {
@@ -413,25 +339,26 @@ function TaskModal({
       setTaskDate(task.taskDate)
       setShowSubtaskInput(false)
       setNewSubtaskTitle("")
+      // Decompose accumulated seconds into hours and minutes
+      const totalSec = task.timerAccumulated
+      setTimeHours(Math.floor(totalSec / 3600))
+      setTimeMinutes(Math.floor((totalSec % 3600) / 60))
     }
   }, [task?.id, task?.updatedAt])
-
-  const timerSec = task ? taskTimerSeconds(task) : 0
-
-  // Live timer for modal
-  const [liveTimer, setLiveTimer] = useState(0)
-  useEffect(() => {
-    if (!task) return
-    setLiveTimer(taskTimerSeconds(task))
-    if (!task.timerIsRunning) return
-    const id = setInterval(() => setLiveTimer(taskTimerSeconds(task)), 1000)
-    return () => clearInterval(id)
-  }, [task?.timerIsRunning, task?.timerStartedAt, task?.timerAccumulated])
 
   if (!task) return null
 
   const handleSaveField = async (field: string, value: unknown) => {
     await updateTask({ id: task.id, [field]: value })
+  }
+
+  const handleTimeChange = async (h: number, m: number) => {
+    const clampedH = Math.max(0, h)
+    const clampedM = Math.max(0, Math.min(59, m))
+    setTimeHours(clampedH)
+    setTimeMinutes(clampedM)
+    const totalSeconds = clampedH * 3600 + clampedM * 60
+    await updateTask({ id: task.id, timerAccumulated: totalSeconds })
   }
 
   const handleAddSubtask = async () => {
@@ -449,8 +376,6 @@ function TaskModal({
     await deleteTask(task.id)
     onOpenChange(false)
   }
-
-  const hasAccumulated = task.timerAccumulated > 0 || task.timerIsRunning
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -682,61 +607,48 @@ function TaskModal({
             )}
           </div>
 
-          {/* Timer section */}
+          {/* Time input (manual) */}
           <div className="space-y-2">
-            <label className="text-xs text-muted-foreground">Таймер</label>
-            <div className="flex items-center gap-3">
-              {task.timerIsRunning ? (
-                <>
-                  <span className="font-mono text-lg tabular-nums text-foreground">
-                    {formatTimerDisplay(liveTimer)}
-                  </span>
-                  <Button
-                    size="icon-xs"
-                    variant="outline"
-                    onClick={() => pauseTimer(task.id)}
-                  >
-                    <Pause className="size-3.5" />
-                  </Button>
-                  <Button
-                    size="icon-xs"
-                    variant="outline"
-                    onClick={() => stopTimer(task.id)}
-                  >
-                    <Square className="size-3.5" />
-                  </Button>
-                </>
-              ) : hasAccumulated ? (
-                <>
-                  <span className="font-mono text-lg tabular-nums text-foreground">
-                    {formatDuration(liveTimer)}
-                  </span>
-                  <Button
-                    size="icon-xs"
-                    variant="outline"
-                    onClick={() => startTimer(task.id)}
-                  >
-                    <Play className="size-3.5" />
-                  </Button>
-                  <Button
-                    size="icon-xs"
-                    variant="outline"
-                    onClick={() => stopTimer(task.id)}
-                  >
-                    <Square className="size-3.5" />
-                  </Button>
-                </>
-              ) : (
-                <Button
-                  size="xs"
-                  variant="outline"
-                  onClick={() => startTimer(task.id)}
-                  className="gap-1.5"
-                >
-                  <Play className="size-3.5" />
-                  Начать
-                </Button>
-              )}
+            <label className="text-xs text-muted-foreground flex items-center gap-1.5">
+              <Clock className="size-3" />
+              Затраченное время
+            </label>
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
+                <Input
+                  type="number"
+                  min={0}
+                  value={timeHours}
+                  onChange={(e) => {
+                    const h = parseInt(e.target.value) || 0
+                    setTimeHours(h)
+                  }}
+                  onBlur={() => handleTimeChange(timeHours, timeMinutes)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleTimeChange(timeHours, timeMinutes)
+                  }}
+                  className="w-16 text-center"
+                />
+                <span className="text-xs text-muted-foreground">ч</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Input
+                  type="number"
+                  min={0}
+                  max={59}
+                  value={timeMinutes}
+                  onChange={(e) => {
+                    const m = parseInt(e.target.value) || 0
+                    setTimeMinutes(m)
+                  }}
+                  onBlur={() => handleTimeChange(timeHours, timeMinutes)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleTimeChange(timeHours, timeMinutes)
+                  }}
+                  className="w-16 text-center"
+                />
+                <span className="text-xs text-muted-foreground">мин</span>
+              </div>
             </div>
           </div>
 
@@ -767,7 +679,6 @@ export default function PlannerPage() {
     tasks,
     hydrated,
     createTask,
-    updateTask,
     reorderTasks,
   } = usePlanner()
 
@@ -963,14 +874,13 @@ export default function PlannerPage() {
             ))}
           </div>
 
-          {/* New task button */}
+          {/* New task button — icon only, round */}
           <Button
-            size="sm"
-            className="gap-1.5 bg-amber-600 hover:bg-amber-700 text-white border-0"
+            size="icon"
+            className="size-9 rounded-full bg-amber-600 hover:bg-amber-700 text-white border-0"
             onClick={handleQuickAdd}
           >
             <Plus className="size-4" />
-            New
           </Button>
         </div>
       </div>
