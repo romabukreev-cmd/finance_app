@@ -87,6 +87,18 @@ const PRIORITY_BADGE_COLORS: Record<string, string> = {
   gray: "bg-gray-500/20 text-gray-400",
 }
 
+const DOT_COLOR: Record<string, string> = {
+  emerald: "bg-emerald-400",
+  sky: "bg-sky-400",
+  violet: "bg-violet-400",
+  orange: "bg-orange-400",
+  teal: "bg-teal-400",
+  amber: "bg-amber-400",
+  red: "bg-red-400",
+  slate: "bg-slate-400",
+  gray: "bg-gray-400",
+}
+
 function getDirectionById(id: string | null) {
   if (!id) return null
   return DEFAULT_WORK_DIRECTIONS.find((d) => d.id === id) ?? null
@@ -418,7 +430,7 @@ function TaskModal({
                 <SelectItem value="">Без направления</SelectItem>
                 {DEFAULT_WORK_DIRECTIONS.map((d) => (
                   <SelectItem key={d.id} value={d.id}>
-                    <span className={cn("inline-block size-2 rounded-full mr-1.5", `bg-${d.color}-400`)} />
+                    <span className={cn("inline-block size-2 rounded-full mr-1.5", DOT_COLOR[d.color] ?? "bg-slate-400")} />
                     {d.name}
                   </SelectItem>
                 ))}
@@ -446,7 +458,7 @@ function TaskModal({
                     <span
                       className={cn(
                         "inline-block size-2 rounded-full mr-1.5",
-                        `bg-${p.color}-400`
+                        DOT_COLOR[p.color] ?? "bg-slate-400"
                       )}
                     />
                     {p.label}
@@ -905,7 +917,7 @@ export default function PlannerPage() {
             ))}
           </div>
 
-          <DragOverlay>
+          <DragOverlay dropAnimation={null}>
             {activeTask ? (
               <div className="w-[300px]">
                 <TaskCard
