@@ -23,7 +23,7 @@ export const DEFAULT_DEBUFFS: BuffDebuff[] = [
 export const DEFAULT_WORK_DIRECTIONS: WorkDirection[] = [
   { id: "dir-studio", name: "Студия", color: "emerald" },
   { id: "dir-dev", name: "Разработка", color: "sky" },
-  { id: "dir-ai", name: "ИИ", color: "violet" },
+  { id: "dir-ai", name: "Изучение ИИ", color: "violet" },
   { id: "dir-media", name: "Медийка", color: "orange" },
   { id: "dir-self", name: "Саморазвитие", color: "teal" },
   { id: "dir-learning", name: "Обучение", color: "amber" },
@@ -32,7 +32,7 @@ export const DEFAULT_WORK_DIRECTIONS: WorkDirection[] = [
 export const DEFAULT_DIARY_CATEGORIES = [
   { id: "dcat-studio", name: "Студия", color: "emerald" },
   { id: "dcat-idea", name: "Идея", color: "amber" },
-  { id: "dcat-auto", name: "Автоматизации", color: "sky" },
+  { id: "dcat-auto", name: "Разработка", color: "sky" },
   { id: "dcat-read", name: "Чтение", color: "indigo" },
   { id: "dcat-media", name: "Медийка", color: "orange" },
   { id: "dcat-personal", name: "Личное", color: "violet" },
