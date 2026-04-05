@@ -657,7 +657,7 @@ function DayEntry({ date, today }: { date: string; today: string }) {
     entry.thoughts.length > 0 ||
     entry.activeBuffIds.length > 0 ||
     entry.activeDebuffIds.length > 0 ||
-    entry.workLogs.some((w) => w.hours > 0) ||
+    (entry.workLogs ?? []).some((w) => w.hours > 0) ||
     entry.isBookmarked
   )
 
