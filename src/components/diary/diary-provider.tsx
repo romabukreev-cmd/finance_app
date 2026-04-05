@@ -75,7 +75,6 @@ async function postDiary(body: Record<string, unknown>) {
 export function DiaryProvider({ children }: { children: ReactNode }) {
   const [entries, setEntries] = useState<DiaryEntry[]>([])
   const [hydrated, setHydrated] = useState(false)
-  const [loadedRanges, setLoadedRanges] = useState<string[]>([])
 
   const categories = useMemo(
     () =>
@@ -88,8 +87,6 @@ export function DiaryProvider({ children }: { children: ReactNode }) {
 
   const loadDateRange = useCallback(
     async (from: string, to: string) => {
-      const key = `${from}_${to}`
-      if (loadedRanges.includes(key)) return
       try {
         const res = await fetch(`/api/diary?from=${from}&to=${to}`)
         const data: DiaryEntry[] = await res.json()
@@ -98,12 +95,11 @@ export function DiaryProvider({ children }: { children: ReactNode }) {
           const kept = prev.filter((e) => !existingDates.has(e.date))
           return [...kept, ...data]
         })
-        setLoadedRanges((prev) => [...prev, key])
       } catch (err) {
         console.error("Failed to load diary:", err)
       }
     },
-    [loadedRanges]
+    []
   )
 
   // Initial load — last 60 days
@@ -113,8 +109,8 @@ export function DiaryProvider({ children }: { children: ReactNode }) {
     from.setDate(from.getDate() - 60)
     const toStr = to.toISOString().slice(0, 10)
     const fromStr = from.toISOString().slice(0, 10)
-    loadDateRange(fromStr, toStr).then(() => setHydrated(true))
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+    loadDateRange(fromStr, toStr).finally(() => setHydrated(true))
+  }, [loadDateRange])
 
   const refetchDay = useCallback(async (date: string) => {
     try {
