@@ -18,22 +18,13 @@ import {
 import type {
   DiaryCategory,
   DiaryEntry,
-  DiaryState,
   DiaryThought,
   WorkDirection,
-  WorkLog,
 } from "@/lib/diary/types"
-import { todayIsoDate } from "@/lib/finance/format"
-
-const STORAGE_KEY = "diary:state:v1"
-
-function generateId() {
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`
-}
 
 function emptyEntry(date: string): DiaryEntry {
   return {
-    id: generateId(),
+    id: "",
     date,
     thoughts: [],
     activeBuffIds: [],
@@ -42,34 +33,6 @@ function emptyEntry(date: string): DiaryEntry {
     isBookmarked: false,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-  }
-}
-
-function defaultState(): DiaryState {
-  return {
-    categories: DEFAULT_DIARY_CATEGORIES.map((c) => ({
-      ...c,
-      createdAt: new Date().toISOString(),
-    })),
-    entries: [],
-    workDirections: DEFAULT_WORK_DIRECTIONS,
-  }
-}
-
-function loadState(): DiaryState {
-  if (typeof window === "undefined") return defaultState()
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return defaultState()
-    const saved = JSON.parse(raw) as DiaryState
-    const defaults = defaultState()
-    return {
-      ...saved,
-      categories: defaults.categories,
-      workDirections: defaults.workDirections,
-    }
-  } catch {
-    return defaultState()
   }
 }
 
@@ -90,6 +53,7 @@ type DiaryContextValue = {
   setWorkLog: (date: string, directionId: string, hours: number) => void
   addCategory: (name: string, color: string) => void
   addWorkDirection: (name: string, color: string) => void
+  loadDateRange: (from: string, to: string) => Promise<void>
 }
 
 const DiaryContext = createContext<DiaryContextValue | null>(null)
@@ -100,154 +64,141 @@ export function useDiary() {
   return ctx
 }
 
+async function postDiary(body: Record<string, unknown>) {
+  await fetch("/api/diary", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  })
+}
+
 export function DiaryProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<DiaryState>(defaultState)
+  const [entries, setEntries] = useState<DiaryEntry[]>([])
   const [hydrated, setHydrated] = useState(false)
+  const [loadedRanges, setLoadedRanges] = useState<string[]>([])
 
-  useEffect(() => {
-    setState(loadState())
-    setHydrated(true)
-  }, [])
-
-  useEffect(() => {
-    if (!hydrated) return
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
-  }, [hydrated, state])
-
-  const updateEntry = useCallback(
-    (date: string, updater: (entry: DiaryEntry) => DiaryEntry) => {
-      setState((prev) => {
-        const existing = prev.entries.find((e) => e.date === date)
-        const entry = existing ?? emptyEntry(date)
-        const updated = { ...updater(entry), updatedAt: new Date().toISOString() }
-        const entries = existing
-          ? prev.entries.map((e) => (e.date === date ? updated : e))
-          : [...prev.entries, updated]
-        return { ...prev, entries }
-      })
-    },
+  const categories = useMemo(
+    () =>
+      DEFAULT_DIARY_CATEGORIES.map((c) => ({
+        ...c,
+        createdAt: new Date().toISOString(),
+      })),
     []
   )
 
+  const loadDateRange = useCallback(
+    async (from: string, to: string) => {
+      const key = `${from}_${to}`
+      if (loadedRanges.includes(key)) return
+      try {
+        const res = await fetch(`/api/diary?from=${from}&to=${to}`)
+        const data: DiaryEntry[] = await res.json()
+        setEntries((prev) => {
+          const existingDates = new Set(data.map((e) => e.date))
+          const kept = prev.filter((e) => !existingDates.has(e.date))
+          return [...kept, ...data]
+        })
+        setLoadedRanges((prev) => [...prev, key])
+      } catch (err) {
+        console.error("Failed to load diary:", err)
+      }
+    },
+    [loadedRanges]
+  )
+
+  // Initial load — last 60 days
+  useEffect(() => {
+    const to = new Date()
+    const from = new Date()
+    from.setDate(from.getDate() - 60)
+    const toStr = to.toISOString().slice(0, 10)
+    const fromStr = from.toISOString().slice(0, 10)
+    loadDateRange(fromStr, toStr).then(() => setHydrated(true))
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const refetchDay = useCallback(async (date: string) => {
+    try {
+      const res = await fetch(`/api/diary?from=${date}&to=${date}`)
+      const data: DiaryEntry[] = await res.json()
+      setEntries((prev) => {
+        const kept = prev.filter((e) => e.date !== date)
+        return [...kept, ...data]
+      })
+    } catch (err) {
+      console.error("Failed to refetch day:", err)
+    }
+  }, [])
+
   const getOrCreateEntry = useCallback(
     (date: string): DiaryEntry => {
-      return state.entries.find((e) => e.date === date) ?? emptyEntry(date)
+      return entries.find((e) => e.date === date) ?? emptyEntry(date)
     },
-    [state.entries]
+    [entries]
   )
 
   const addThought = useCallback(
-    (date: string, text: string, categoryIds: string[]) => {
-      const thought: DiaryThought = { id: generateId(), text, categoryIds }
-      updateEntry(date, (entry) => ({
-        ...entry,
-        thoughts: [...entry.thoughts, thought],
-      }))
+    async (date: string, text: string, categoryIds: string[]) => {
+      await postDiary({ action: "addThought", date, text, categoryIds })
+      await refetchDay(date)
     },
-    [updateEntry]
+    [refetchDay]
   )
 
   const updateThought = useCallback(
-    (date: string, thoughtId: string, text: string, categoryIds: string[]) => {
-      updateEntry(date, (entry) => ({
-        ...entry,
-        thoughts: entry.thoughts.map((t) =>
-          t.id === thoughtId ? { ...t, text, categoryIds } : t
-        ),
-      }))
+    async (date: string, thoughtId: string, text: string, categoryIds: string[]) => {
+      await postDiary({ action: "updateThought", thoughtId, text, categoryIds })
+      await refetchDay(date)
     },
-    [updateEntry]
+    [refetchDay]
   )
 
   const deleteThought = useCallback(
-    (date: string, thoughtId: string) => {
-      updateEntry(date, (entry) => ({
-        ...entry,
-        thoughts: entry.thoughts.filter((t) => t.id !== thoughtId),
-      }))
+    async (date: string, thoughtId: string) => {
+      await postDiary({ action: "deleteThought", thoughtId })
+      await refetchDay(date)
     },
-    [updateEntry]
+    [refetchDay]
   )
 
   const toggleBuff = useCallback(
-    (date: string, buffId: string) => {
-      updateEntry(date, (entry) => ({
-        ...entry,
-        activeBuffIds: entry.activeBuffIds.includes(buffId)
-          ? entry.activeBuffIds.filter((id) => id !== buffId)
-          : [...entry.activeBuffIds, buffId],
-      }))
+    async (date: string, buffId: string) => {
+      await postDiary({ action: "toggle", date, toggleId: buffId })
+      await refetchDay(date)
     },
-    [updateEntry]
+    [refetchDay]
   )
 
   const toggleDebuff = useCallback(
-    (date: string, debuffId: string) => {
-      updateEntry(date, (entry) => ({
-        ...entry,
-        activeDebuffIds: entry.activeDebuffIds.includes(debuffId)
-          ? entry.activeDebuffIds.filter((id) => id !== debuffId)
-          : [...entry.activeDebuffIds, debuffId],
-      }))
+    async (date: string, debuffId: string) => {
+      await postDiary({ action: "toggle", date, toggleId: debuffId })
+      await refetchDay(date)
     },
-    [updateEntry]
+    [refetchDay]
   )
 
   const toggleBookmark = useCallback(
-    (date: string) => {
-      updateEntry(date, (entry) => ({
-        ...entry,
-        isBookmarked: !entry.isBookmarked,
-      }))
+    async (date: string) => {
+      await postDiary({ action: "toggleBookmark", date })
+      await refetchDay(date)
     },
-    [updateEntry]
+    [refetchDay]
   )
 
+  // WorkLog — kept as no-op since planner is the source of truth
   const setWorkLog = useCallback(
-    (date: string, directionId: string, hours: number) => {
-      updateEntry(date, (entry) => {
-        const existing = entry.workLogs.find((w) => w.directionId === directionId)
-        const workLogs: WorkLog[] = existing
-          ? hours > 0
-            ? entry.workLogs.map((w) =>
-                w.directionId === directionId ? { ...w, hours } : w
-              )
-            : entry.workLogs.filter((w) => w.directionId !== directionId)
-          : hours > 0
-            ? [...entry.workLogs, { directionId, hours }]
-            : entry.workLogs
-        return { ...entry, workLogs }
-      })
-    },
-    [updateEntry]
+    (_date: string, _directionId: string, _hours: number) => {},
+    []
   )
 
-  const addCategory = useCallback((name: string, color: string) => {
-    setState((prev) => ({
-      ...prev,
-      categories: [
-        ...prev.categories,
-        { id: generateId(), name, color, createdAt: new Date().toISOString() },
-      ],
-    }))
-  }, [])
-
-  const addWorkDirection = useCallback((name: string, color: string) => {
-    setState((prev) => ({
-      ...prev,
-      workDirections: [
-        ...prev.workDirections,
-        { id: generateId(), name, color },
-      ],
-    }))
-  }, [])
+  const addCategory = useCallback((_name: string, _color: string) => {}, [])
+  const addWorkDirection = useCallback((_name: string, _color: string) => {}, [])
 
   const value = useMemo<DiaryContextValue>(
     () => ({
       hydrated,
-      categories: state.categories,
-      entries: state.entries,
-      workDirections: state.workDirections,
+      categories,
+      entries,
+      workDirections: DEFAULT_WORK_DIRECTIONS,
       buffs: DEFAULT_BUFFS,
       debuffs: DEFAULT_DEBUFFS,
       getOrCreateEntry,
@@ -260,12 +211,12 @@ export function DiaryProvider({ children }: { children: ReactNode }) {
       setWorkLog,
       addCategory,
       addWorkDirection,
+      loadDateRange,
     }),
     [
       hydrated,
-      state.categories,
-      state.entries,
-      state.workDirections,
+      categories,
+      entries,
       getOrCreateEntry,
       addThought,
       updateThought,
@@ -276,6 +227,7 @@ export function DiaryProvider({ children }: { children: ReactNode }) {
       setWorkLog,
       addCategory,
       addWorkDirection,
+      loadDateRange,
     ]
   )
 
