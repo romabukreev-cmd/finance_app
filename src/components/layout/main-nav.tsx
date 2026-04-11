@@ -2,9 +2,14 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { BarChart3, BookOpen, CalendarCheck, Home, List, Settings } from "lucide-react"
+import { BarChart3, BookOpen, CalendarCheck, Home, List, LogOut, Settings } from "lucide-react"
 import { ThemeToggle } from "@/components/theme/theme-toggle"
 import { cn } from "@/lib/utils"
+
+async function handleLogout() {
+  await fetch("/api/auth/logout", { method: "POST" })
+  window.location.href = "/login"
+}
 
 const financeNav = [
   { href: "/dashboard", label: "Дашборд", icon: BarChart3 },
@@ -79,8 +84,15 @@ export function MainNav() {
             })}
           </nav>
 
-          <div className="justify-self-end">
+          <div className="flex items-center gap-2 justify-self-end">
             <ThemeToggle />
+            <button
+              onClick={handleLogout}
+              title="Выйти"
+              className="flex h-10 w-10 items-center justify-center rounded-lg border bg-background text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
           </div>
         </div>
       </header>
