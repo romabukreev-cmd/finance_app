@@ -16,6 +16,7 @@ import {
   DEFAULT_WORK_DIRECTIONS,
 } from "@/lib/diary/constants"
 import type {
+  Challenge,
   DiaryCategory,
   DiaryEntry,
   DiaryThought,
@@ -43,6 +44,7 @@ type DiaryContextValue = {
   workDirections: WorkDirection[]
   buffs: typeof DEFAULT_BUFFS
   debuffs: typeof DEFAULT_DEBUFFS
+  challenges: Challenge[]
   getOrCreateEntry: (date: string) => DiaryEntry
   addThought: (date: string, text: string, categoryIds: string[]) => void
   updateThought: (date: string, thoughtId: string, text: string, categoryIds: string[]) => void
@@ -54,6 +56,9 @@ type DiaryContextValue = {
   addCategory: (name: string, color: string) => void
   addWorkDirection: (name: string, color: string) => void
   loadDateRange: (from: string, to: string) => Promise<void>
+  createChallenge: (input: { title: string; emoji: string; targetDebuffId: string; targetDays?: number }) => Promise<void>
+  updateChallenge: (input: Partial<Challenge> & { id: string }) => Promise<void>
+  deleteChallenge: (id: string) => Promise<void>
 }
 
 const DiaryContext = createContext<DiaryContextValue | null>(null)
@@ -74,6 +79,7 @@ async function postDiary(body: Record<string, unknown>) {
 
 export function DiaryProvider({ children }: { children: ReactNode }) {
   const [entries, setEntries] = useState<DiaryEntry[]>([])
+  const [challenges, setChallenges] = useState<Challenge[]>([])
   const [hydrated, setHydrated] = useState(false)
 
   const categories = useMemo(
@@ -102,15 +108,63 @@ export function DiaryProvider({ children }: { children: ReactNode }) {
     []
   )
 
-  // Initial load — last 60 days
+  const refetchChallenges = useCallback(async () => {
+    try {
+      const res = await fetch("/api/challenges")
+      const data: Challenge[] = await res.json()
+      setChallenges(data)
+    } catch (err) {
+      console.error("Failed to load challenges:", err)
+    }
+  }, [])
+
+  // Initial load — last 60 days of entries + challenges
   useEffect(() => {
     const to = new Date()
     const from = new Date()
     from.setDate(from.getDate() - 60)
     const toStr = to.toISOString().slice(0, 10)
     const fromStr = from.toISOString().slice(0, 10)
-    loadDateRange(fromStr, toStr).finally(() => setHydrated(true))
-  }, [loadDateRange])
+    Promise.all([loadDateRange(fromStr, toStr), refetchChallenges()]).finally(() =>
+      setHydrated(true)
+    )
+  }, [loadDateRange, refetchChallenges])
+
+  const createChallenge = useCallback(
+    async (input: { title: string; emoji: string; targetDebuffId: string; targetDays?: number }) => {
+      await fetch("/api/challenges", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input),
+      })
+      await refetchChallenges()
+    },
+    [refetchChallenges]
+  )
+
+  const updateChallenge = useCallback(
+    async (input: Partial<Challenge> & { id: string }) => {
+      await fetch("/api/challenges", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input),
+      })
+      await refetchChallenges()
+    },
+    [refetchChallenges]
+  )
+
+  const deleteChallenge = useCallback(
+    async (id: string) => {
+      await fetch("/api/challenges", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      })
+      await refetchChallenges()
+    },
+    [refetchChallenges]
+  )
 
   const refetchDay = useCallback(async (date: string) => {
     try {
@@ -197,6 +251,7 @@ export function DiaryProvider({ children }: { children: ReactNode }) {
       workDirections: DEFAULT_WORK_DIRECTIONS,
       buffs: DEFAULT_BUFFS,
       debuffs: DEFAULT_DEBUFFS,
+      challenges,
       getOrCreateEntry,
       addThought,
       updateThought,
@@ -208,11 +263,15 @@ export function DiaryProvider({ children }: { children: ReactNode }) {
       addCategory,
       addWorkDirection,
       loadDateRange,
+      createChallenge,
+      updateChallenge,
+      deleteChallenge,
     }),
     [
       hydrated,
       categories,
       entries,
+      challenges,
       getOrCreateEntry,
       addThought,
       updateThought,
@@ -224,6 +283,9 @@ export function DiaryProvider({ children }: { children: ReactNode }) {
       addCategory,
       addWorkDirection,
       loadDateRange,
+      createChallenge,
+      updateChallenge,
+      deleteChallenge,
     ]
   )
 

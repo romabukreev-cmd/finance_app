@@ -193,6 +193,64 @@ const diaryTools: Tool[] = [
 // PLANNER — tasks, subtasks, work hours
 // ============================================================================
 
+// ============================================================================
+// CHALLENGES — 30-day streaks based on diary debuffs
+// ============================================================================
+
+const challengeTools: Tool[] = [
+  {
+    name: "list_challenges",
+    description:
+      "List all challenges (30-day streaks). " +
+      "A challenge tracks consecutive days without a specific debuff (e.g. no late-night scrolling). " +
+      "Streak is computed from diary entries — get them via get_diary_entries and check activeDebuffIds.",
+    inputSchema: z.object({}),
+    handler: async () => api("/api/challenges"),
+  },
+  {
+    name: "create_challenge",
+    description: "Create a new challenge targeting a specific debuff.",
+    inputSchema: z.object({
+      title: z.string().describe("Short title, e.g. 'Без кофеина'"),
+      emoji: z.string().describe("Single emoji for the card, e.g. '☕'"),
+      targetDebuffId: z
+        .string()
+        .describe(
+          "Debuff to avoid: debuff-home, debuff-scroll, debuff-junk, debuff-sweet, debuff-sleep, debuff-night"
+        ),
+      targetDays: z.number().int().positive().default(30).describe("Goal length in days"),
+      startDate: z
+        .string()
+        .optional()
+        .describe("ISO date YYYY-MM-DD, default today. Streak starts counting from this date."),
+    }),
+    handler: async (args) => api("/api/challenges", { method: "POST", body: args }),
+  },
+  {
+    name: "update_challenge",
+    description:
+      "Update a challenge. Typical uses: extend target (e.g. 30→60 after completion), " +
+      "deactivate (isActive=false), change emoji/title.",
+    inputSchema: z.object({
+      id: z.string().uuid(),
+      title: z.string().optional(),
+      emoji: z.string().optional(),
+      targetDebuffId: z.string().optional(),
+      targetDays: z.number().int().positive().optional(),
+      startDate: z.string().optional(),
+      isActive: z.boolean().optional(),
+      sortOrder: z.number().int().optional(),
+    }),
+    handler: async (args) => api("/api/challenges", { method: "PUT", body: args }),
+  },
+  {
+    name: "delete_challenge",
+    description: "Delete a challenge by id.",
+    inputSchema: z.object({ id: z.string().uuid() }),
+    handler: async (args) => api("/api/challenges", { method: "DELETE", body: args }),
+  },
+]
+
 const plannerTools: Tool[] = [
   {
     name: "list_tasks",
@@ -371,4 +429,10 @@ const metaTools: Tool[] = [
   },
 ]
 
-export const allTools: Tool[] = [...financeTools, ...diaryTools, ...plannerTools, ...metaTools]
+export const allTools: Tool[] = [
+  ...financeTools,
+  ...diaryTools,
+  ...challengeTools,
+  ...plannerTools,
+  ...metaTools,
+]

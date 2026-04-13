@@ -52,3 +52,16 @@ export type DiaryBackup = {
   exportedAt: string
   state: DiaryState
 }
+
+export type Challenge = {
+  id: string
+  title: string
+  emoji: string
+  targetDebuffId: string
+  targetDays: number
+  startDate: string
+  isActive: boolean
+  sortOrder: number
+  createdAt: string
+  updatedAt: string
+}

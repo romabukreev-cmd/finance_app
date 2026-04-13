@@ -12,6 +12,7 @@ import {
   X,
 } from "lucide-react"
 import { useDiary } from "@/components/diary/diary-provider"
+import ChallengesBlock from "@/components/diary/challenges-block"
 import { PageHeader } from "@/components/layout/page-header"
 import { Button } from "@/components/ui/button"
 import {
@@ -748,6 +749,8 @@ export default function DiaryPage() {
           </div>
         }
       />
+
+      <ChallengesBlock />
 
       {allDates.map((date) => (
         <DayEntry key={date} date={date} today={today} />
