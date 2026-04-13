@@ -728,6 +728,8 @@ export default function DiaryPage() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-3">
+      <ChallengesBlock />
+
       <PageHeader
         title="Дневник"
         description="Мысли, привычки и рабочие часы — каждый день."
@@ -749,8 +751,6 @@ export default function DiaryPage() {
           </div>
         }
       />
-
-      <ChallengesBlock />
 
       {allDates.map((date) => (
         <DayEntry key={date} date={date} today={today} />
