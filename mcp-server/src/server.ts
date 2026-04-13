@@ -24,12 +24,15 @@ function buildServer() {
   )
 
   for (const tool of allTools) {
+    // SDK expects a Zod raw shape (field map), not a ZodObject itself.
+    // All our schemas are z.object(...) — extract .shape.
+    const shape = (tool.inputSchema as any).shape ?? {}
+
     server.registerTool(
       tool.name,
       {
         description: tool.description,
-        // @ts-ignore — SDK accepts ZodRawShape; we wrap object schemas
-        inputSchema: (tool.inputSchema as any)._def?.shape ?? tool.inputSchema,
+        inputSchema: shape,
       },
       async (args: any) => {
         try {

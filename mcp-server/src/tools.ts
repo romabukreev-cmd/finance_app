@@ -84,39 +84,17 @@ const financeTools: Tool[] = [
       "Create a transaction. Use type='income' or 'expense' with categoryId. " +
       "For 'transfer' between accounts use fromAccountId/toAccountId. " +
       "For 'adjustment' (balance correction) use signedAmount (can be negative).",
-    inputSchema: z.discriminatedUnion("type", [
-      z.object({
-        type: z.literal("income"),
-        transactionDate: z.string().describe("ISO date YYYY-MM-DD"),
-        accountId: z.string().uuid(),
-        categoryId: z.string().uuid(),
-        amount: z.number().positive(),
-        note: z.string().optional(),
-      }),
-      z.object({
-        type: z.literal("expense"),
-        transactionDate: z.string(),
-        accountId: z.string().uuid(),
-        categoryId: z.string().uuid(),
-        amount: z.number().positive(),
-        note: z.string().optional(),
-      }),
-      z.object({
-        type: z.literal("transfer"),
-        transactionDate: z.string(),
-        fromAccountId: z.string().uuid(),
-        toAccountId: z.string().uuid(),
-        amount: z.number().positive(),
-        note: z.string().optional(),
-      }),
-      z.object({
-        type: z.literal("adjustment"),
-        transactionDate: z.string(),
-        accountId: z.string().uuid(),
-        signedAmount: z.number().describe("Positive to increase balance, negative to decrease"),
-        note: z.string().optional(),
-      }),
-    ]),
+    inputSchema: z.object({
+      type: z.enum(["income", "expense", "transfer", "adjustment"]),
+      transactionDate: z.string().describe("ISO date YYYY-MM-DD"),
+      accountId: z.string().uuid().optional().describe("For income/expense/adjustment"),
+      fromAccountId: z.string().uuid().optional().describe("For transfer (source)"),
+      toAccountId: z.string().uuid().optional().describe("For transfer (destination)"),
+      categoryId: z.string().uuid().optional().describe("For income/expense"),
+      amount: z.number().positive().optional().describe("For income/expense/transfer (positive)"),
+      signedAmount: z.number().optional().describe("For adjustment (positive=increase, negative=decrease)"),
+      note: z.string().optional(),
+    }),
     handler: async (args) => api("/api/transactions", { method: "POST", body: args }),
   },
   {
