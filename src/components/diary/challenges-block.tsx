@@ -322,20 +322,9 @@ export default function ChallengesBlock() {
   const [manageOpen, setManageOpen] = useState(false)
 
   return (
-    <div className="rounded-xl border bg-card p-4">
-      <div className="flex items-center justify-end mb-2">
-        <Button
-          size="icon"
-          variant="ghost"
-          aria-label="Управление челленджами"
-          onClick={() => setManageOpen(true)}
-        >
-          <Settings className="size-4" />
-        </Button>
-      </div>
-
+    <>
       {challenges.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-8 gap-3 text-center">
+        <div className="rounded-xl border bg-card p-4 flex flex-col items-center justify-center py-8 gap-3 text-center">
           <div className="text-sm text-muted-foreground">
             Пока нет активных челленджей
           </div>
@@ -345,14 +334,24 @@ export default function ChallengesBlock() {
           </Button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="flex flex-col md:flex-row gap-3 items-stretch">
           {challenges.map((ch) => (
-            <ChallengeCard key={ch.id} challenge={ch} />
+            <div key={ch.id} className="flex-1 min-w-0">
+              <ChallengeCard challenge={ch} />
+            </div>
           ))}
+          <button
+            type="button"
+            onClick={() => setManageOpen(true)}
+            aria-label="Управление челленджами"
+            className="rounded-xl border bg-card hover:bg-muted/40 transition-colors flex items-center justify-center md:w-12 py-2 md:py-0 text-muted-foreground hover:text-foreground"
+          >
+            <Settings className="size-4" />
+          </button>
         </div>
       )}
 
       <ManageModal open={manageOpen} onOpenChange={setManageOpen} />
-    </div>
+    </>
   )
 }
