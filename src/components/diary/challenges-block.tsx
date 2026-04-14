@@ -47,24 +47,26 @@ function computeStats(
   const today = new Date()
   today.setHours(0, 0, 0, 0)
 
-  // Streak: walk backwards from today until startDate or until a broken day
+  // Streak: consecutive clean days counting back from today.
+  // Any non-clean day breaks the streak: red (target debuff) OR missing entry.
+  // Exception: if TODAY has no entry yet, don't count that as a break —
+  // start counting from yesterday (today hasn't been evaluated).
   let streak = 0
   const cursor = new Date(today)
-  // Guard: if startDate invalid, treat as today
   const startDate = challenge.startDate || toDateStr(today)
+
+  // Skip today if there's no entry yet (user hasn't checked in today)
+  const todayStr = toDateStr(cursor)
+  if (!entryByDate.has(todayStr)) {
+    cursor.setDate(cursor.getDate() - 1)
+  }
 
   while (true) {
     const dateStr = toDateStr(cursor)
     if (dateStr < startDate) break
     const entry = entryByDate.get(dateStr)
-    if (!entry) {
-      // no entry — skip (streak doesn't grow, doesn't break)
-      cursor.setDate(cursor.getDate() - 1)
-      continue
-    }
-    if (entry.activeDebuffIds.includes(challenge.targetDebuffId)) {
-      break
-    }
+    if (!entry) break // missing entry breaks the streak
+    if (entry.activeDebuffIds.includes(challenge.targetDebuffId)) break
     streak += 1
     cursor.setDate(cursor.getDate() - 1)
   }
