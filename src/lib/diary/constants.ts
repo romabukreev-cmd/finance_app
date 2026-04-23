@@ -5,7 +5,7 @@ export const DEFAULT_BUFFS: BuffDebuff[] = [
   { id: "buff-morning", name: "Разминка", emoji: "🧘", type: "buff" },
   { id: "buff-shower", name: "Контрастный душ", emoji: "🚿", type: "buff" },
   { id: "buff-water", name: "Стакан воды", emoji: "💧", type: "buff" },
-  { id: "buff-food", name: "Здоровое питание", emoji: "🥗", type: "buff" },
+  { id: "buff-breath", name: "Дыхание", emoji: "🫁", type: "buff" },
   { id: "buff-workout", name: "Тренировка", emoji: "💪", type: "buff" },
   { id: "buff-read", name: "Чтение", emoji: "📖", type: "buff" },
   { id: "buff-vitamins", name: "Витамины", emoji: "💊", type: "buff" },

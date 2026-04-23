@@ -173,7 +173,7 @@ const diaryTools: Tool[] = [
     name: "toggle_diary_buff_debuff",
     description:
       "Toggle a buff or debuff for a date. " +
-      "Buffs: buff-walk, buff-morning, buff-shower, buff-water, buff-food, buff-workout, buff-read, buff-vitamins. " +
+      "Buffs: buff-walk, buff-morning, buff-shower, buff-water, buff-breath, buff-workout, buff-read, buff-vitamins. " +
       "Debuffs: debuff-home, debuff-scroll, debuff-junk, debuff-sweet, debuff-sleep, debuff-night.",
     inputSchema: z.object({
       date: z.string(),
@@ -400,7 +400,7 @@ const metaTools: Tool[] = [
         { id: "buff-morning", name: "Разминка", emoji: "🧘" },
         { id: "buff-shower", name: "Контрастный душ", emoji: "🚿" },
         { id: "buff-water", name: "Стакан воды", emoji: "💧" },
-        { id: "buff-food", name: "Здоровое питание", emoji: "🥗" },
+        { id: "buff-breath", name: "Дыхание", emoji: "🫁" },
         { id: "buff-workout", name: "Тренировка", emoji: "💪" },
         { id: "buff-read", name: "Чтение", emoji: "📖" },
         { id: "buff-vitamins", name: "Витамины", emoji: "💊" },
