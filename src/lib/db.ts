@@ -12,6 +12,8 @@ const pool = new Pool({
   password: process.env.DB_PASSWORD || "finapp_secure_2026",
   database: process.env.DB_NAME || "finance_app",
   max: 10,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 3000,
 })
 
 export function query<T extends Record<string, unknown> = Record<string, unknown>>(
