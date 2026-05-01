@@ -76,14 +76,6 @@ const netWorthConfig = {
   },
 } satisfies ChartConfig
 
-const RU_MONTHS = ["Янв", "Фев", "Мар", "Апр", "Май", "Июн", "Июл", "Авг", "Сен", "Окт", "Ноя", "Дек"]
-
-function monthLabel(mk: string): string {
-  const [yearRaw, monthRaw] = mk.split("-")
-  const monthIndex = Number(monthRaw) - 1
-  return `${RU_MONTHS[monthIndex] ?? mk} ${yearRaw.slice(2)}`
-}
-
 function PieSliceTooltip({ active, payload }: { active?: boolean; payload?: Array<{ name: string; value: number }> }) {
   if (!active || !payload?.length) return null
   return (
@@ -136,49 +128,71 @@ export default function DashboardPage() {
   const diff = incomeTotal - expenseTotal
 
   const incomeExpenseSeries = useMemo(() => {
-    const byMonth = new Map<string, { income: number; expense: number }>()
+    const relevant = transactions.filter(
+      (t) => t.type === "income" || t.type === "expense"
+    )
+    if (relevant.length === 0) return []
 
-    for (const transaction of transactions) {
-      if (transaction.type !== "income" && transaction.type !== "expense") continue
-      const mk = monthKey(transaction.transactionDate)
-      if (!byMonth.has(mk)) byMonth.set(mk, { income: 0, expense: 0 })
-      const entry = byMonth.get(mk)!
-      if (transaction.type === "income") entry.income += transaction.amount
-      else entry.expense += transaction.amount
+    const firstDate = relevant.reduce(
+      (min, t) => (t.transactionDate < min ? t.transactionDate : min),
+      relevant[0].transactionDate
+    )
+    const today = new Date().toISOString().slice(0, 10)
+
+    const dailyIncome = new Map<string, number>()
+    const dailyExpense = new Map<string, number>()
+    for (const t of relevant) {
+      if (t.type === "income")
+        dailyIncome.set(t.transactionDate, (dailyIncome.get(t.transactionDate) ?? 0) + t.amount)
+      else
+        dailyExpense.set(t.transactionDate, (dailyExpense.get(t.transactionDate) ?? 0) + t.amount)
     }
 
-    return Array.from(byMonth.entries())
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([mk, { income, expense }]) => ({
-        month: mk,
-        label: monthLabel(mk),
-        income,
-        expense,
-      }))
+    const points: { date: string; label: string; income: number; expense: number }[] = []
+    const cursor = new Date(firstDate)
+    const end = new Date(today)
+    let cumIncome = 0
+    let cumExpense = 0
+
+    while (cursor <= end) {
+      const d = cursor.toISOString().slice(0, 10)
+      cumIncome += dailyIncome.get(d) ?? 0
+      cumExpense += dailyExpense.get(d) ?? 0
+      points.push({ date: d, label: `${d.slice(8)}.${d.slice(5, 7)}`, income: cumIncome, expense: cumExpense })
+      cursor.setDate(cursor.getDate() + 1)
+    }
+
+    return points
   }, [transactions])
 
   const netWorthSeries = useMemo(() => {
-    const months = Array.from(
-      new Set(transactions.map((t) => monthKey(t.transactionDate)))
-    ).sort()
+    if (transactions.length === 0) return []
 
-    if (months.length === 0) return []
-
-    const baseNetWorth = accounts.reduce((sum, account) => sum + account.startBalance, 0)
-    const sorted = [...transactions].sort((a, b) =>
-      a.transactionDate.localeCompare(b.transactionDate)
+    const firstDate = transactions.reduce(
+      (min, t) => (t.transactionDate < min ? t.transactionDate : min),
+      transactions[0].transactionDate
     )
+    const today = new Date().toISOString().slice(0, 10)
 
-    let rolling = baseNetWorth
-    let txIdx = 0
+    const dailyDelta = new Map<string, number>()
+    for (const t of transactions) {
+      dailyDelta.set(t.transactionDate, (dailyDelta.get(t.transactionDate) ?? 0) + t.signedAmount)
+    }
 
-    return months.map((month) => {
-      while (txIdx < sorted.length && monthKey(sorted[txIdx].transactionDate) <= month) {
-        rolling += sorted[txIdx].signedAmount
-        txIdx++
-      }
-      return { month, label: monthLabel(month), netWorth: rolling }
-    })
+    const base = accounts.reduce((sum, a) => sum + a.startBalance, 0)
+    const points: { date: string; label: string; netWorth: number }[] = []
+    const cursor = new Date(firstDate)
+    const end = new Date(today)
+    let rolling = base
+
+    while (cursor <= end) {
+      const d = cursor.toISOString().slice(0, 10)
+      rolling += dailyDelta.get(d) ?? 0
+      points.push({ date: d, label: `${d.slice(8)}.${d.slice(5, 7)}`, netWorth: rolling })
+      cursor.setDate(cursor.getDate() + 1)
+    }
+
+    return points
   }, [accounts, transactions])
 
   const expenseRows = useMemo(
@@ -305,7 +319,7 @@ export default function DashboardPage() {
             <CardHeader>
               <CardTitle>Динамика доходов и расходов</CardTitle>
               <CardDescription>
-                Суммарные доходы и расходы по месяцам. Переводы не учитываются.
+                Накопительный итог по всем дням. Переводы не учитываются.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -315,7 +329,7 @@ export default function DashboardPage() {
               >
                 <LineChart data={incomeExpenseSeries} margin={{ left: 0, right: 8, top: 8 }}>
                   <CartesianGrid vertical={false} />
-                  <XAxis dataKey="label" tickLine={false} axisLine={false} tickMargin={10} />
+                  <XAxis dataKey="label" tickLine={false} axisLine={false} tickMargin={10} interval={Math.max(0, Math.floor(incomeExpenseSeries.length / 6) - 1)} />
                   <YAxis tickLine={false} axisLine={false} tickMargin={4} width={50} tickFormatter={(v) => v >= 1000 ? `${(v/1000).toFixed(0)}к` : String(v)} />
                   <ChartTooltip
                     content={
@@ -358,7 +372,7 @@ export default function DashboardPage() {
             <CardHeader>
               <CardTitle>Рост капитализации</CardTitle>
               <CardDescription>
-                Капитализация на конец каждого месяца.
+                Изменение капитализации по всем дням.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -368,7 +382,7 @@ export default function DashboardPage() {
               >
                 <LineChart data={netWorthSeries} margin={{ left: 0, right: 8, top: 8 }}>
                   <CartesianGrid vertical={false} />
-                  <XAxis dataKey="label" tickLine={false} axisLine={false} tickMargin={10} />
+                  <XAxis dataKey="label" tickLine={false} axisLine={false} tickMargin={10} interval={Math.max(0, Math.floor(netWorthSeries.length / 6) - 1)} />
                   <YAxis tickLine={false} axisLine={false} tickMargin={4} width={50} tickFormatter={(v) => v >= 1000 ? `${(v/1000).toFixed(0)}к` : String(v)} />
                   <ChartTooltip
                     content={
