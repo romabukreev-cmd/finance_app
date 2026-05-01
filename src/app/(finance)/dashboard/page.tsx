@@ -76,16 +76,12 @@ const netWorthConfig = {
   },
 } satisfies ChartConfig
 
-function monthDaysCount(monthValue: string) {
-  const [yearRaw, monthRaw] = monthValue.split("-")
-  const year = Number(yearRaw)
-  const month = Number(monthRaw)
+const RU_MONTHS = ["Янв", "Фев", "Мар", "Апр", "Май", "Июн", "Июл", "Авг", "Сен", "Окт", "Ноя", "Дек"]
 
-  if (!Number.isInteger(year) || !Number.isInteger(month) || month < 1 || month > 12) {
-    return 31
-  }
-
-  return new Date(year, month, 0).getDate()
+function monthLabel(mk: string): string {
+  const [yearRaw, monthRaw] = mk.split("-")
+  const monthIndex = Number(monthRaw) - 1
+  return `${RU_MONTHS[monthIndex] ?? mk} ${yearRaw.slice(2)}`
 }
 
 function PieSliceTooltip({ active, payload }: { active?: boolean; payload?: Array<{ name: string; value: number }> }) {
@@ -140,92 +136,50 @@ export default function DashboardPage() {
   const diff = incomeTotal - expenseTotal
 
   const incomeExpenseSeries = useMemo(() => {
-    const daysCount = monthDaysCount(selectedMonth)
-
-    const points = Array.from({ length: daysCount }, (_, index) => ({
-      day: String(index + 1).padStart(2, "0"),
-      income: 0,
-      expense: 0,
-    }))
-
-    for (const transaction of monthTransactions) {
-      const dayIndex = Number(transaction.transactionDate.slice(8, 10)) - 1
-
-      if (dayIndex < 0 || dayIndex >= daysCount) {
-        continue
-      }
-
-      if (transaction.type === "income") {
-        points[dayIndex].income += transaction.amount
-      }
-
-      if (transaction.type === "expense") {
-        points[dayIndex].expense += transaction.amount
-      }
-    }
-
-    // Накопительный эффект: каждый день суммирует всё предыдущее
-    for (let i = 1; i < points.length; i++) {
-      points[i].income += points[i - 1].income
-      points[i].expense += points[i - 1].expense
-    }
-
-    // Для текущего месяца — показываем только до сегодня
-    if (selectedMonth === currentMonth()) {
-      return points.slice(0, new Date().getDate())
-    }
-
-    return points
-  }, [monthTransactions, selectedMonth])
-
-  const netWorthSeries = useMemo(() => {
-    const daysCount = monthDaysCount(selectedMonth)
-    const monthStart = `${selectedMonth}-01`
-    const startBalancesByAccount = new Map<string, number>(
-      accounts.map((account) => [account.id, account.startBalance])
-    )
-    const dailyDelta = Array.from({ length: daysCount }, () => 0)
+    const byMonth = new Map<string, { income: number; expense: number }>()
 
     for (const transaction of transactions) {
-      if (transaction.transactionDate < monthStart) {
-        const current = startBalancesByAccount.get(transaction.accountId) ?? 0
-        startBalancesByAccount.set(transaction.accountId, current + transaction.signedAmount)
-        continue
-      }
-
-      if (monthKey(transaction.transactionDate) !== selectedMonth) {
-        continue
-      }
-
-      const dayIndex = Number(transaction.transactionDate.slice(8, 10)) - 1
-
-      if (dayIndex < 0 || dayIndex >= daysCount) {
-        continue
-      }
-
-      dailyDelta[dayIndex] += transaction.signedAmount
+      if (transaction.type !== "income" && transaction.type !== "expense") continue
+      const mk = monthKey(transaction.transactionDate)
+      if (!byMonth.has(mk)) byMonth.set(mk, { income: 0, expense: 0 })
+      const entry = byMonth.get(mk)!
+      if (transaction.type === "income") entry.income += transaction.amount
+      else entry.expense += transaction.amount
     }
 
-    let rollingValue = Array.from(startBalancesByAccount.values()).reduce(
-      (sum, value) => sum + value,
-      0
+    return Array.from(byMonth.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([mk, { income, expense }]) => ({
+        month: mk,
+        label: monthLabel(mk),
+        income,
+        expense,
+      }))
+  }, [transactions])
+
+  const netWorthSeries = useMemo(() => {
+    const months = Array.from(
+      new Set(transactions.map((t) => monthKey(t.transactionDate)))
+    ).sort()
+
+    if (months.length === 0) return []
+
+    const baseNetWorth = accounts.reduce((sum, account) => sum + account.startBalance, 0)
+    const sorted = [...transactions].sort((a, b) =>
+      a.transactionDate.localeCompare(b.transactionDate)
     )
 
-    const all = dailyDelta.map((delta, index) => {
-      rollingValue += delta
-      return {
-        day: String(index + 1).padStart(2, "0"),
-        netWorth: rollingValue,
+    let rolling = baseNetWorth
+    let txIdx = 0
+
+    return months.map((month) => {
+      while (txIdx < sorted.length && monthKey(sorted[txIdx].transactionDate) <= month) {
+        rolling += sorted[txIdx].signedAmount
+        txIdx++
       }
+      return { month, label: monthLabel(month), netWorth: rolling }
     })
-
-    // Для текущего месяца — показываем только до сегодня
-    if (selectedMonth === currentMonth()) {
-      return all.slice(0, new Date().getDate())
-    }
-
-    return all
-  }, [accounts, selectedMonth, transactions])
+  }, [accounts, transactions])
 
   const expenseRows = useMemo(
     () =>
@@ -351,7 +305,7 @@ export default function DashboardPage() {
             <CardHeader>
               <CardTitle>Динамика доходов и расходов</CardTitle>
               <CardDescription>
-                Накопительный итог по дням месяца. Переводы не учитываются.
+                Суммарные доходы и расходы по месяцам. Переводы не учитываются.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -361,7 +315,7 @@ export default function DashboardPage() {
               >
                 <LineChart data={incomeExpenseSeries} margin={{ left: 0, right: 8, top: 8 }}>
                   <CartesianGrid vertical={false} />
-                  <XAxis dataKey="day" tickLine={false} axisLine={false} tickMargin={10} />
+                  <XAxis dataKey="label" tickLine={false} axisLine={false} tickMargin={10} />
                   <YAxis tickLine={false} axisLine={false} tickMargin={4} width={50} tickFormatter={(v) => v >= 1000 ? `${(v/1000).toFixed(0)}к` : String(v)} />
                   <ChartTooltip
                     content={
@@ -376,7 +330,7 @@ export default function DashboardPage() {
                             </span>
                           </>
                         )}
-                        labelFormatter={(value) => `${value}.${selectedMonth.slice(5, 7)}`}
+                        labelFormatter={(value) => String(value)}
                       />
                     }
                   />
@@ -404,7 +358,7 @@ export default function DashboardPage() {
             <CardHeader>
               <CardTitle>Рост капитализации</CardTitle>
               <CardDescription>
-                Изменение капитализации по дням выбранного месяца.
+                Капитализация на конец каждого месяца.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -414,8 +368,8 @@ export default function DashboardPage() {
               >
                 <LineChart data={netWorthSeries} margin={{ left: 0, right: 8, top: 8 }}>
                   <CartesianGrid vertical={false} />
-                  <XAxis dataKey="day" tickLine={false} axisLine={false} tickMargin={10} />
-                  <YAxis domain={[0, 1000000]} tickLine={false} axisLine={false} tickMargin={4} width={50} tickFormatter={(v) => v >= 1000 ? `${(v/1000).toFixed(0)}к` : String(v)} />
+                  <XAxis dataKey="label" tickLine={false} axisLine={false} tickMargin={10} />
+                  <YAxis tickLine={false} axisLine={false} tickMargin={4} width={50} tickFormatter={(v) => v >= 1000 ? `${(v/1000).toFixed(0)}к` : String(v)} />
                   <ChartTooltip
                     content={
                       <ChartTooltipContent
@@ -424,7 +378,7 @@ export default function DashboardPage() {
                             {formatMoney(Number(value))}
                           </span>
                         )}
-                        labelFormatter={(value) => `${value}.${selectedMonth.slice(5, 7)}`}
+                        labelFormatter={(value) => String(value)}
                       />
                     }
                   />
