@@ -148,7 +148,7 @@ const diaryTools: Tool[] = [
       date: z.string().describe("ISO date YYYY-MM-DD"),
       text: z.string().describe("Thought text. Supports markdown: **bold**, *italic*, ~~strike~~"),
       categoryIds: z.array(z.string()).default([]).describe(
-        "Category IDs from constants: dcat-studio, dcat-idea, dcat-auto, dcat-read, dcat-media, dcat-personal"
+        "Category IDs from constants: dcat-studio, dcat-idea, dcat-auto, dcat-read, dcat-media, dcat-personal, dcat-youtube"
       ),
     }),
     handler: async (args) => api("/api/diary", { method: "POST", body: { action: "addThought", ...args } }),
@@ -275,7 +275,7 @@ const plannerTools: Tool[] = [
         .nullable()
         .optional()
         .describe(
-          "Work direction id: dir-studio, dir-dev, dir-ai, dir-media, dir-self, dir-learning. Null = no direction."
+          "Work direction id: dir-studio, dir-dev, dir-ai, dir-media, dir-self, dir-youtube. Null = no direction."
         ),
       taskDate: z.string().optional().describe("ISO date YYYY-MM-DD. Default: today."),
       notes: z.string().optional(),
@@ -385,7 +385,7 @@ const metaTools: Tool[] = [
         { id: "dir-ai", name: "Изучение ИИ", color: "violet" },
         { id: "dir-media", name: "Медийка", color: "orange" },
         { id: "dir-self", name: "Саморазвитие", color: "teal" },
-        { id: "dir-learning", name: "Обучение", color: "amber" },
+        { id: "dir-youtube", name: "Ютуб", color: "rose" },
       ],
       diaryCategories: [
         { id: "dcat-studio", name: "Студия", color: "emerald" },
@@ -394,6 +394,7 @@ const metaTools: Tool[] = [
         { id: "dcat-read", name: "Чтение", color: "indigo" },
         { id: "dcat-media", name: "Медийка", color: "orange" },
         { id: "dcat-personal", name: "Личное", color: "violet" },
+        { id: "dcat-youtube", name: "Ютуб", color: "rose" },
       ],
       buffs: [
         { id: "buff-walk", name: "Прогулка", emoji: "🚶" },

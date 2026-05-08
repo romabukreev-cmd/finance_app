@@ -26,7 +26,7 @@ export const DEFAULT_WORK_DIRECTIONS: WorkDirection[] = [
   { id: "dir-ai", name: "Изучение ИИ", color: "violet" },
   { id: "dir-media", name: "Медийка", color: "orange" },
   { id: "dir-self", name: "Саморазвитие", color: "teal" },
-  { id: "dir-learning", name: "Обучение", color: "amber" },
+  { id: "dir-youtube", name: "Ютуб", color: "rose" },
 ]
 
 export const DEFAULT_DIARY_CATEGORIES = [
@@ -36,6 +36,7 @@ export const DEFAULT_DIARY_CATEGORIES = [
   { id: "dcat-read", name: "Чтение", color: "indigo" },
   { id: "dcat-media", name: "Медийка", color: "orange" },
   { id: "dcat-personal", name: "Личное", color: "violet" },
+  { id: "dcat-youtube", name: "Ютуб", color: "rose" },
 ]
 
 export const DIARY_CATEGORY_COLORS: Record<string, { bg: string; text: string; border: string }> = {
