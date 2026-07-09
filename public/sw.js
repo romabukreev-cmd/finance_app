@@ -1,5 +1,5 @@
-const CACHE_NAME = "finance-mvp-shell-v3";
-const APP_SHELL = ["/", "/dashboard", "/transactions", "/settings", "/diary", "/manifest.webmanifest"];
+const CACHE_NAME = "finance-mvp-shell-v4";
+const APP_SHELL = ["/", "/dashboard", "/transactions", "/settings", "/diary", "/planner", "/login", "/manifest.webmanifest"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -65,6 +65,6 @@ self.addEventListener("fetch", (event) => {
         }
         return response;
       })
-      .catch(() => caches.match(request).then((cached) => cached || caches.match("/dashboard")))
+      .catch(() => caches.match(request).then((cached) => cached || caches.match("/")))
   );
 });

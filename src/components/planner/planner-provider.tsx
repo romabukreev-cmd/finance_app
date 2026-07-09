@@ -21,6 +21,7 @@ import { plannerApi } from "@/lib/planner/api"
 type PlannerContextValue = {
   tasks: Task[]
   hydrated: boolean
+  error: string | null
   createTask: (input: CreateTaskInput) => Promise<void>
   updateTask: (input: UpdateTaskInput) => Promise<void>
   deleteTask: (id: string) => Promise<void>
@@ -39,13 +40,16 @@ const PlannerContext = createContext<PlannerContextValue | null>(null)
 export function PlannerProvider({ children }: { children: ReactNode }) {
   const [tasks, setTasks] = useState<Task[]>([])
   const [hydrated, setHydrated] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const refetch = useCallback(async () => {
     try {
       const data = await plannerApi.tasks.list()
       setTasks(data)
+      setError(null)
     } catch (err) {
       console.error("Failed to fetch tasks:", err)
+      setError(err instanceof Error ? err.message : "Не удалось загрузить задачи")
     }
   }, [])
 
@@ -109,6 +113,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
     () => ({
       tasks,
       hydrated,
+      error,
       createTask,
       updateTask,
       deleteTask,
@@ -124,6 +129,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
     [
       tasks,
       hydrated,
+      error,
       createTask,
       updateTask,
       deleteTask,

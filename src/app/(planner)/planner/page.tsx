@@ -1023,8 +1023,10 @@ export default function PlannerPage() {
   const {
     tasks,
     hydrated,
+    error,
     createTask,
     reorderTasks,
+    refetch,
   } = usePlanner()
 
   const [view, setView] = useState<PlannerView>("today")
@@ -1206,6 +1208,21 @@ export default function PlannerPage() {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-muted-foreground text-sm">Загрузка...</div>
+      </div>
+    )
+  }
+
+  if (error && tasks.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 gap-3">
+        <div className="text-muted-foreground text-sm text-center">
+          Не удалось загрузить задачи.
+          <br />
+          {error}
+        </div>
+        <Button size="sm" variant="outline" onClick={() => refetch()}>
+          Повторить
+        </Button>
       </div>
     )
   }

@@ -8,14 +8,26 @@ import type {
 } from "./types"
 
 const BASE = "/api"
+const TIMEOUT_MS = 10000
 
 async function json<T>(url: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(url, init)
-  if (!res.ok) {
-    const body = await res.text()
-    throw new Error(body || res.statusText)
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS)
+  try {
+    const res = await fetch(url, { ...init, signal: controller.signal })
+    if (!res.ok) {
+      const body = await res.text()
+      throw new Error(body || res.statusText)
+    }
+    return await res.json()
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "AbortError") {
+      throw new Error("Превышено время ожидания ответа сервера")
+    }
+    throw err
+  } finally {
+    clearTimeout(timeout)
   }
-  return res.json()
 }
 
 export const plannerApi = {
