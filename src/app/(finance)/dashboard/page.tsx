@@ -8,7 +8,7 @@ import {
   PiggyBank,
   TrendingUp,
 } from "lucide-react"
-import { CartesianGrid, Cell, Line, LineChart, Pie, PieChart, XAxis, YAxis } from "recharts"
+import { Area, AreaChart, CartesianGrid, Cell, Pie, PieChart, XAxis, YAxis } from "recharts"
 import { useFinance } from "@/components/finance/finance-provider"
 import { QuickInputBar } from "@/components/finance/quick-input-bar"
 import { QuickOperationDialog } from "@/components/finance/quick-operation-dialog"
@@ -76,6 +76,33 @@ const netWorthConfig = {
   },
 } satisfies ChartConfig
 
+const SHORT_MONTH_LABELS = [
+  "Янв", "Фев", "Мар", "Апр", "Май", "Июн",
+  "Июл", "Авг", "Сен", "Окт", "Ноя", "Дек",
+]
+
+function monthLabel(key: string) {
+  const [year, month] = key.split("-")
+  return `${SHORT_MONTH_LABELS[Number(month) - 1]} ${year.slice(2)}`
+}
+
+function eachMonthKey(fromKey: string, toKey: string): string[] {
+  const keys: string[] = []
+  let [year, month] = fromKey.split("-").map(Number)
+  const [toYear, toMonth] = toKey.split("-").map(Number)
+
+  while (year < toYear || (year === toYear && month <= toMonth)) {
+    keys.push(`${year}-${String(month).padStart(2, "0")}`)
+    month += 1
+    if (month > 12) {
+      month = 1
+      year += 1
+    }
+  }
+
+  return keys
+}
+
 function PieSliceTooltip({ active, payload }: { active?: boolean; payload?: Array<{ name: string; value: number }> }) {
   if (!active || !payload?.length) return null
   return (
@@ -133,66 +160,50 @@ export default function DashboardPage() {
     )
     if (relevant.length === 0) return []
 
-    const firstDate = relevant.reduce(
-      (min, t) => (t.transactionDate < min ? t.transactionDate : min),
-      relevant[0].transactionDate
+    const firstKey = relevant.reduce(
+      (min, t) => (monthKey(t.transactionDate) < min ? monthKey(t.transactionDate) : min),
+      monthKey(relevant[0].transactionDate)
     )
-    const today = new Date().toISOString().slice(0, 10)
 
-    const dailyIncome = new Map<string, number>()
-    const dailyExpense = new Map<string, number>()
+    const monthlyIncome = new Map<string, number>()
+    const monthlyExpense = new Map<string, number>()
     for (const t of relevant) {
+      const key = monthKey(t.transactionDate)
       if (t.type === "income")
-        dailyIncome.set(t.transactionDate, (dailyIncome.get(t.transactionDate) ?? 0) + t.amount)
+        monthlyIncome.set(key, (monthlyIncome.get(key) ?? 0) + t.amount)
       else
-        dailyExpense.set(t.transactionDate, (dailyExpense.get(t.transactionDate) ?? 0) + t.amount)
+        monthlyExpense.set(key, (monthlyExpense.get(key) ?? 0) + t.amount)
     }
 
-    const points: { date: string; label: string; income: number; expense: number }[] = []
-    const cursor = new Date(firstDate)
-    const end = new Date(today)
     let cumIncome = 0
     let cumExpense = 0
-
-    while (cursor <= end) {
-      const d = cursor.toISOString().slice(0, 10)
-      cumIncome += dailyIncome.get(d) ?? 0
-      cumExpense += dailyExpense.get(d) ?? 0
-      points.push({ date: d, label: `${d.slice(8)}.${d.slice(5, 7)}`, income: cumIncome, expense: cumExpense })
-      cursor.setDate(cursor.getDate() + 1)
-    }
-
-    return points
+    return eachMonthKey(firstKey, currentMonth()).map((key) => {
+      cumIncome += monthlyIncome.get(key) ?? 0
+      cumExpense += monthlyExpense.get(key) ?? 0
+      return { key, label: monthLabel(key), income: cumIncome, expense: cumExpense }
+    })
   }, [transactions])
 
   const netWorthSeries = useMemo(() => {
     if (transactions.length === 0) return []
 
-    const firstDate = transactions.reduce(
-      (min, t) => (t.transactionDate < min ? t.transactionDate : min),
-      transactions[0].transactionDate
+    const firstKey = transactions.reduce(
+      (min, t) => (monthKey(t.transactionDate) < min ? monthKey(t.transactionDate) : min),
+      monthKey(transactions[0].transactionDate)
     )
-    const today = new Date().toISOString().slice(0, 10)
 
-    const dailyDelta = new Map<string, number>()
+    const monthlyDelta = new Map<string, number>()
     for (const t of transactions) {
-      dailyDelta.set(t.transactionDate, (dailyDelta.get(t.transactionDate) ?? 0) + t.signedAmount)
+      const key = monthKey(t.transactionDate)
+      monthlyDelta.set(key, (monthlyDelta.get(key) ?? 0) + t.signedAmount)
     }
 
     const base = accounts.reduce((sum, a) => sum + a.startBalance, 0)
-    const points: { date: string; label: string; netWorth: number }[] = []
-    const cursor = new Date(firstDate)
-    const end = new Date(today)
     let rolling = base
-
-    while (cursor <= end) {
-      const d = cursor.toISOString().slice(0, 10)
-      rolling += dailyDelta.get(d) ?? 0
-      points.push({ date: d, label: `${d.slice(8)}.${d.slice(5, 7)}`, netWorth: rolling })
-      cursor.setDate(cursor.getDate() + 1)
-    }
-
-    return points
+    return eachMonthKey(firstKey, currentMonth()).map((key) => {
+      rolling += monthlyDelta.get(key) ?? 0
+      return { key, label: monthLabel(key), netWorth: rolling }
+    })
   }, [accounts, transactions])
 
   const expenseRows = useMemo(
@@ -319,7 +330,7 @@ export default function DashboardPage() {
             <CardHeader>
               <CardTitle>Динамика доходов и расходов</CardTitle>
               <CardDescription>
-                Накопительный итог по всем дням. Переводы не учитываются.
+                Накопительный итог по месяцам. Переводы не учитываются.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -327,9 +338,19 @@ export default function DashboardPage() {
                 config={incomeExpenseConfig}
                 className="h-[180px] w-full aspect-auto"
               >
-                <LineChart data={incomeExpenseSeries} margin={{ left: 0, right: 8, top: 8 }}>
+                <AreaChart data={incomeExpenseSeries} margin={{ left: 0, right: 8, top: 8 }}>
+                  <defs>
+                    <linearGradient id="fillIncome" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="var(--color-income)" stopOpacity={0.35} />
+                      <stop offset="95%" stopColor="var(--color-income)" stopOpacity={0.02} />
+                    </linearGradient>
+                    <linearGradient id="fillExpense" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="var(--color-expense)" stopOpacity={0.35} />
+                      <stop offset="95%" stopColor="var(--color-expense)" stopOpacity={0.02} />
+                    </linearGradient>
+                  </defs>
                   <CartesianGrid vertical={false} />
-                  <XAxis dataKey="label" tickLine={false} axisLine={false} tickMargin={10} interval={Math.max(0, Math.floor(incomeExpenseSeries.length / 6) - 1)} />
+                  <XAxis dataKey="label" tickLine={false} axisLine={false} tickMargin={10} />
                   <YAxis tickLine={false} axisLine={false} tickMargin={4} width={50} tickFormatter={(v) => v >= 1000 ? `${(v/1000).toFixed(0)}к` : String(v)} />
                   <ChartTooltip
                     content={
@@ -349,21 +370,23 @@ export default function DashboardPage() {
                     }
                   />
                   <ChartLegend content={<ChartLegendContent />} />
-                  <Line
+                  <Area
                     dataKey="income"
                     type="monotone"
                     stroke="var(--color-income)"
                     strokeWidth={2}
+                    fill="url(#fillIncome)"
                     dot={false}
                   />
-                  <Line
+                  <Area
                     dataKey="expense"
                     type="monotone"
                     stroke="var(--color-expense)"
                     strokeWidth={2}
+                    fill="url(#fillExpense)"
                     dot={false}
                   />
-                </LineChart>
+                </AreaChart>
               </ChartContainer>
             </CardContent>
           </Card>
@@ -372,7 +395,7 @@ export default function DashboardPage() {
             <CardHeader>
               <CardTitle>Рост капитализации</CardTitle>
               <CardDescription>
-                Изменение капитализации по всем дням.
+                Изменение капитализации по месяцам.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -380,9 +403,15 @@ export default function DashboardPage() {
                 config={netWorthConfig}
                 className="h-[180px] w-full aspect-auto"
               >
-                <LineChart data={netWorthSeries} margin={{ left: 0, right: 8, top: 8 }}>
+                <AreaChart data={netWorthSeries} margin={{ left: 0, right: 8, top: 8 }}>
+                  <defs>
+                    <linearGradient id="fillNetWorth" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="var(--color-netWorth)" stopOpacity={0.35} />
+                      <stop offset="95%" stopColor="var(--color-netWorth)" stopOpacity={0.02} />
+                    </linearGradient>
+                  </defs>
                   <CartesianGrid vertical={false} />
-                  <XAxis dataKey="label" tickLine={false} axisLine={false} tickMargin={10} interval={Math.max(0, Math.floor(netWorthSeries.length / 6) - 1)} />
+                  <XAxis dataKey="label" tickLine={false} axisLine={false} tickMargin={10} />
                   <YAxis tickLine={false} axisLine={false} tickMargin={4} width={50} tickFormatter={(v) => v >= 1000 ? `${(v/1000).toFixed(0)}к` : String(v)} />
                   <ChartTooltip
                     content={
@@ -396,14 +425,15 @@ export default function DashboardPage() {
                       />
                     }
                   />
-                  <Line
+                  <Area
                     dataKey="netWorth"
                     type="monotone"
                     stroke="var(--color-netWorth)"
                     strokeWidth={2}
+                    fill="url(#fillNetWorth)"
                     dot={false}
                   />
-                </LineChart>
+                </AreaChart>
               </ChartContainer>
             </CardContent>
           </Card>
