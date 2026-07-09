@@ -315,10 +315,12 @@ function buildBalances(accounts: Account[], transactions: Transaction[]): Accoun
     sums.set(transaction.accountId, current + transaction.signedAmount)
   }
 
-  return accounts.map((account) => ({
-    account,
-    balance: normalizeMoney(account.startBalance + (sums.get(account.id) ?? 0)),
-  }))
+  return accounts
+    .filter((account) => !account.isArchived)
+    .map((account) => ({
+      account,
+      balance: normalizeMoney(account.startBalance + (sums.get(account.id) ?? 0)),
+    }))
 }
 
 type FinanceContextValue = {
