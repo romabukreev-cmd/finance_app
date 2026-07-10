@@ -175,13 +175,12 @@ export default function DashboardPage() {
         monthlyExpense.set(key, (monthlyExpense.get(key) ?? 0) + t.amount)
     }
 
-    let cumIncome = 0
-    let cumExpense = 0
-    return eachMonthKey(firstKey, currentMonth()).map((key) => {
-      cumIncome += monthlyIncome.get(key) ?? 0
-      cumExpense += monthlyExpense.get(key) ?? 0
-      return { key, label: monthLabel(key), income: cumIncome, expense: cumExpense }
-    })
+    return eachMonthKey(firstKey, currentMonth()).map((key) => ({
+      key,
+      label: monthLabel(key),
+      income: monthlyIncome.get(key) ?? 0,
+      expense: monthlyExpense.get(key) ?? 0,
+    }))
   }, [transactions])
 
   const netWorthSeries = useMemo(() => {
@@ -330,7 +329,7 @@ export default function DashboardPage() {
             <CardHeader>
               <CardTitle>Динамика доходов и расходов</CardTitle>
               <CardDescription>
-                Накопительный итог по месяцам. Переводы не учитываются.
+                Фактические суммы за каждый месяц. Переводы не учитываются.
               </CardDescription>
             </CardHeader>
             <CardContent>
