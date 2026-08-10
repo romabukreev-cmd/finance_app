@@ -1,4 +1,4 @@
-const CACHE_NAME = "finance-mvp-shell-v8";
+const CACHE_NAME = "finance-mvp-shell-v9";
 const APP_SHELL = ["/", "/dashboard", "/transactions", "/settings", "/diary", "/planner", "/login", "/manifest.webmanifest"];
 
 self.addEventListener("install", (event) => {
