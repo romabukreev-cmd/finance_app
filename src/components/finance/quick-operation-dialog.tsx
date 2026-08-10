@@ -18,7 +18,12 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useFinance } from "@/components/finance/finance-provider"
-import { buildOperationForm, findName, type OperationFormState } from "@/lib/finance/helpers"
+import {
+  buildOperationForm,
+  findName,
+  sortCategoriesByUsage,
+  type OperationFormState,
+} from "@/lib/finance/helpers"
 import type { TransactionType } from "@/lib/finance/types"
 
 type QuickOperationDialogProps = {
@@ -44,7 +49,7 @@ export function QuickOperationDialog({
   type,
   onOpenChange,
 }: QuickOperationDialogProps) {
-  const { accounts, categories, createOperation } = useFinance()
+  const { accounts, categories, transactions, createOperation } = useFinance()
 
   const activeAccounts = useMemo(
     () => accounts.filter((account) => !account.isArchived),
@@ -52,13 +57,21 @@ export function QuickOperationDialog({
   )
 
   const incomeCategories = useMemo(
-    () => categories.filter((category) => category.kind === "income" && !category.isArchived),
-    [categories]
+    () =>
+      sortCategoriesByUsage(
+        categories.filter((category) => category.kind === "income" && !category.isArchived),
+        transactions
+      ),
+    [categories, transactions]
   )
 
   const expenseCategories = useMemo(
-    () => categories.filter((category) => category.kind === "expense" && !category.isArchived),
-    [categories]
+    () =>
+      sortCategoriesByUsage(
+        categories.filter((category) => category.kind === "expense" && !category.isArchived),
+        transactions
+      ),
+    [categories, transactions]
   )
 
   const [message, setMessage] = useState<string | null>(null)

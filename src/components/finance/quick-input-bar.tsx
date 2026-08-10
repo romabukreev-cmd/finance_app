@@ -13,26 +13,34 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { todayIsoDate } from "@/lib/finance/format"
-import { findName } from "@/lib/finance/helpers"
+import { findName, sortCategoriesByUsage } from "@/lib/finance/helpers"
 import { categoryBadgeClass, normalizeCategoryColor } from "@/lib/finance/category-colors"
 import { accountCardColorClass } from "@/lib/finance/account-colors"
 import type { TransactionType } from "@/lib/finance/types"
 import { cn } from "@/lib/utils"
 
 export function QuickInputBar() {
-  const { accounts, categories, createOperation } = useFinance()
+  const { accounts, categories, transactions, createOperation } = useFinance()
 
   const activeAccounts = useMemo(
     () => accounts.filter((a) => !a.isArchived),
     [accounts]
   )
   const incomeCategories = useMemo(
-    () => categories.filter((c) => c.kind === "income" && !c.isArchived),
-    [categories]
+    () =>
+      sortCategoriesByUsage(
+        categories.filter((c) => c.kind === "income" && !c.isArchived),
+        transactions
+      ),
+    [categories, transactions]
   )
   const expenseCategories = useMemo(
-    () => categories.filter((c) => c.kind === "expense" && !c.isArchived),
-    [categories]
+    () =>
+      sortCategoriesByUsage(
+        categories.filter((c) => c.kind === "expense" && !c.isArchived),
+        transactions
+      ),
+    [categories, transactions]
   )
 
   const [type, setType] = useState<"income" | "expense" | "transfer">("expense")

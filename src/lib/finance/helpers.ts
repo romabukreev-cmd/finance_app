@@ -1,4 +1,4 @@
-import type { Account, Category, TransactionType } from "@/lib/finance/types"
+import type { Account, Category, Transaction, TransactionType } from "@/lib/finance/types"
 import { todayIsoDate } from "@/lib/finance/format"
 
 export type OperationFormState = {
@@ -18,6 +18,22 @@ export function findName<T extends { id: string; name: string }>(
 ) {
   if (!id) return fallback
   return items.find((item) => item.id === id)?.name ?? fallback
+}
+
+export function sortCategoriesByUsage<T extends { id: string }>(
+  categories: T[],
+  transactions: Pick<Transaction, "categoryId">[]
+): T[] {
+  const counts = new Map<string, number>()
+
+  for (const transaction of transactions) {
+    if (!transaction.categoryId) continue
+    counts.set(transaction.categoryId, (counts.get(transaction.categoryId) ?? 0) + 1)
+  }
+
+  return [...categories].sort(
+    (a, b) => (counts.get(b.id) ?? 0) - (counts.get(a.id) ?? 0)
+  )
 }
 
 export function defaultCategoryId(
