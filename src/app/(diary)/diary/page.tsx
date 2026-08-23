@@ -12,7 +12,6 @@ import {
   X,
 } from "lucide-react"
 import { useDiary } from "@/components/diary/diary-provider"
-import ChallengesBlock from "@/components/diary/challenges-block"
 import { PageHeader } from "@/components/layout/page-header"
 import { Button } from "@/components/ui/button"
 import {
@@ -728,8 +727,6 @@ export default function DiaryPage() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-3">
-      <ChallengesBlock />
-
       <PageHeader
         title="Дневник"
         description="Мысли, привычки и рабочие часы — каждый день."
