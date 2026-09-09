@@ -21,12 +21,10 @@ export const DEFAULT_DEBUFFS: BuffDebuff[] = [
 ]
 
 export const DEFAULT_WORK_DIRECTIONS: WorkDirection[] = [
-  { id: "dir-studio", name: "Студия", color: "emerald" },
-  { id: "dir-dev", name: "Разработка", color: "sky" },
-  { id: "dir-ai", name: "Изучение ИИ", color: "violet" },
-  { id: "dir-media", name: "Медийка", color: "orange" },
-  { id: "dir-self", name: "Саморазвитие", color: "teal" },
   { id: "dir-youtube", name: "Ютуб", color: "rose" },
+  { id: "dir-self", name: "Саморазвитие", color: "teal" },
+  { id: "dir-studio", name: "Студия", color: "emerald" },
+  { id: "dir-personal", name: "Личное", color: "violet" },
 ]
 
 export const DEFAULT_DIARY_CATEGORIES = [

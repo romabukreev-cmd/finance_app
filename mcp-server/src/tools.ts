@@ -275,7 +275,7 @@ const plannerTools: Tool[] = [
         .nullable()
         .optional()
         .describe(
-          "Work direction id: dir-studio, dir-dev, dir-ai, dir-media, dir-self, dir-youtube. Null = no direction."
+          "Work direction id: dir-youtube, dir-self, dir-studio, dir-personal. Null = no direction."
         ),
       taskDate: z.string().optional().describe("ISO date YYYY-MM-DD. Default: today."),
       notes: z.string().optional(),
@@ -380,12 +380,10 @@ const metaTools: Tool[] = [
     inputSchema: z.object({}),
     handler: async () => ({
       workDirections: [
-        { id: "dir-studio", name: "Студия", color: "emerald" },
-        { id: "dir-dev", name: "Разработка", color: "sky" },
-        { id: "dir-ai", name: "Изучение ИИ", color: "violet" },
-        { id: "dir-media", name: "Медийка", color: "orange" },
-        { id: "dir-self", name: "Саморазвитие", color: "teal" },
         { id: "dir-youtube", name: "Ютуб", color: "rose" },
+        { id: "dir-self", name: "Саморазвитие", color: "teal" },
+        { id: "dir-studio", name: "Студия", color: "emerald" },
+        { id: "dir-personal", name: "Личное", color: "violet" },
       ],
       diaryCategories: [
         { id: "dcat-studio", name: "Студия", color: "emerald" },
