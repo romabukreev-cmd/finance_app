@@ -36,11 +36,13 @@ import {
 import { cn } from "@/lib/utils"
 import {
   DndContext,
-  closestCorners,
+  pointerWithin,
+  rectIntersection,
   DragOverlay,
   PointerSensor,
   useSensor,
   useSensors,
+  type CollisionDetection,
   type DragStartEvent,
   type DragEndEvent,
 } from "@dnd-kit/core"
@@ -73,6 +75,13 @@ function getTodayDate(): string {
   const mm = String(d.getMonth() + 1).padStart(2, "0")
   const dd = String(d.getDate()).padStart(2, "0")
   return `${yyyy}-${mm}-${dd}`
+}
+
+// Колонки высокие, карточки мелкие — closestCorners сравнивает углы и при узких
+// колонках отдаёт победу карточке из соседнего столбца. Ориентируемся на курсор.
+const pointerFirstCollision: CollisionDetection = (args) => {
+  const pointerCollisions = pointerWithin(args)
+  return pointerCollisions.length > 0 ? pointerCollisions : rectIntersection(args)
 }
 
 const COLUMN_META: Record<TaskStatus, { label: string; dotColor: string }> = {
@@ -912,7 +921,7 @@ function WeekView({ tasks, onOpenModal }: { tasks: Task[]; onOpenModal: (t: Task
           <Button variant="ghost" size="icon" className="size-8" onClick={() => setWeekOffset((p) => p + 1)}><ChevronRight className="size-4" /></Button>
         </div>
       </div>
-      <DndContext sensors={sensors} collisionDetection={closestCorners} onDragEnd={handleDragEnd}>
+      <DndContext sensors={sensors} collisionDetection={pointerFirstCollision} onDragEnd={handleDragEnd}>
         <div className="grid grid-cols-7 gap-2">
           {dates.map((date, i) => (
             <DroppableDay
@@ -995,7 +1004,7 @@ function CalendarView({ tasks, onOpenModal }: { tasks: Task[]; onOpenModal: (t: 
         {DAY_NAMES.map((d) => <div key={d} className="py-1 font-medium">{d}</div>)}
       </div>
 
-      <DndContext sensors={sensors} collisionDetection={closestCorners} onDragEnd={handleDragEnd}>
+      <DndContext sensors={sensors} collisionDetection={pointerFirstCollision} onDragEnd={handleDragEnd}>
         <div className="grid grid-cols-7 gap-2">
           {days.map(({ date, inMonth }) => (
             <DroppableDay
@@ -1033,6 +1042,7 @@ export default function PlannerPage() {
   const [modalOpen, setModalOpen] = useState(false)
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
   const [activeId, setActiveId] = useState<string | null>(null)
+  const [activeWidth, setActiveWidth] = useState<number | null>(null)
   const [movingIds, setMovingIds] = useState<Set<string>>(new Set())
 
   const todayDate = useMemo(() => getTodayDate(), [])
@@ -1106,6 +1116,12 @@ export default function PlannerPage() {
 
   const handleDragStart = useCallback((event: DragStartEvent) => {
     setActiveId(event.active.id as string)
+    setActiveWidth(event.active.rect.current.initial?.width ?? null)
+  }, [])
+
+  const handleDragCancel = useCallback(() => {
+    setActiveId(null)
+    setActiveWidth(null)
   }, [])
 
   const handleDragEnd = useCallback(
@@ -1113,11 +1129,9 @@ export default function PlannerPage() {
       const { active, over } = event
       const draggedId = active.id as string
       setActiveId(null)
+      setActiveWidth(null)
 
       if (!over) return
-
-      // Hide the card while API call is in flight
-      setMovingIds((prev) => new Set(prev).add(draggedId))
 
       const activeTaskObj = tasks.find((t) => t.id === active.id)
       if (!activeTaskObj) return
@@ -1144,11 +1158,15 @@ export default function PlannerPage() {
       if (sourceStatus === targetStatus) {
         // Reorder within same column
         const oldIndex = targetColumn.findIndex((t) => t.id === active.id)
-        const newIndex = targetColumn.findIndex((t) => t.id === overId)
-        if (oldIndex === -1 || newIndex === -1 || oldIndex === newIndex) {
-          setMovingIds((prev) => { const n = new Set(prev); n.delete(draggedId); return n })
+        const overIndex = targetColumn.findIndex((t) => t.id === overId)
+        // Бросок на пустую зону столбца — ставим в конец
+        const newIndex = overIndex === -1 ? targetColumn.length - 1 : overIndex
+        if (oldIndex === -1 || oldIndex === newIndex) {
           return
         }
+
+        // Hide the card while API call is in flight
+        setMovingIds((prev) => new Set(prev).add(draggedId))
 
         const reordered = arrayMove(targetColumn, oldIndex, newIndex)
         const items = reordered.map((t, i) => ({
@@ -1158,6 +1176,9 @@ export default function PlannerPage() {
         }))
         await reorderTasks(items)
       } else {
+        // Hide the card while API call is in flight
+        setMovingIds((prev) => new Set(prev).add(draggedId))
+
         // Move to different column
         // Insert at the position of the over item, or at end
         const overIndex = targetColumn.findIndex((t) => t.id === overId)
@@ -1266,9 +1287,10 @@ export default function PlannerPage() {
       {view === "today" ? (
         <DndContext
           sensors={sensors}
-          collisionDetection={closestCorners}
+          collisionDetection={pointerFirstCollision}
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
+          onDragCancel={handleDragCancel}
         >
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {(["todo", "in_progress", "done"] as TaskStatus[]).map((status) => (
@@ -1285,7 +1307,7 @@ export default function PlannerPage() {
 
           <DragOverlay dropAnimation={null}>
             {activeTask ? (
-              <div className="w-[300px]">
+              <div style={{ width: activeWidth ?? 300 }}>
                 <TaskCard
                   task={activeTask}
                   onOpenModal={() => {}}
