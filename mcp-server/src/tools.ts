@@ -428,10 +428,81 @@ const metaTools: Tool[] = [
   },
 ]
 
+// ============================================================================
+// PUBLICATIONS — календарь выхода роликов по YouTube-каналам
+// ============================================================================
+
+const publicationTools: Tool[] = [
+  {
+    name: "get_publication_calendar",
+    description:
+      "Publication calendar of Roman's YouTube channels for a date range. Returns channels (with planWeekdays: ISO 1=Mon..7=Sun, targetDuration, hint) and cells that were edited manually. A day is PLANNED if cell.planned is true, or cell.planned is null/absent and the weekday is in the channel's planWeekdays. cell.done=true means Roman marked the video as published.",
+    inputSchema: z.object({
+      from: z.string().optional().describe("YYYY-MM-DD. Default: Monday of previous week."),
+      to: z.string().optional().describe("YYYY-MM-DD. Default: from + 20 days."),
+    }),
+    handler: async (args) => {
+      const now = new Date()
+      const monday = new Date(now)
+      monday.setUTCDate(now.getUTCDate() - ((now.getUTCDay() + 6) % 7) - 7)
+      const from = args.from ?? monday.toISOString().slice(0, 10)
+      const toDate = new Date(from + "T00:00:00Z")
+      toDate.setUTCDate(toDate.getUTCDate() + 20)
+      const to = args.to ?? toDate.toISOString().slice(0, 10)
+      return api("/api/publications", { query: { from, to } })
+    },
+  },
+  {
+    name: "set_publication_day",
+    description:
+      "Set one cell of the publication calendar. Pass only fields you want to change. planned: true/false overrides the weekly plan for that day, null returns it to the weekly plan. done: published or not. note: short text shown inside the cell (empty = show targetDuration).",
+    inputSchema: z.object({
+      channelId: z.string().describe("Channel id from get_publication_calendar, e.g. 'incredible-survival'"),
+      day: z.string().describe("YYYY-MM-DD"),
+      planned: z.boolean().nullable().optional(),
+      done: z.boolean().optional(),
+      note: z.string().optional(),
+    }),
+    handler: async (args) => api("/api/publications", { method: "PATCH", body: args }),
+  },
+  {
+    name: "update_publication_channel",
+    description:
+      "Update a channel row of the publication calendar: weekly plan (planWeekdays, ISO 1=Mon..7=Sun), target video length label, hover hint, name, order, active flag.",
+    inputSchema: z.object({
+      id: z.string(),
+      name: z.string().optional(),
+      lang: z.string().optional(),
+      url: z.string().optional(),
+      targetDuration: z.string().optional().describe("Short label shown in cells, e.g. '18м', '2ч'"),
+      hint: z.string().optional().describe("Text shown on hover over the channel name"),
+      planWeekdays: z.array(z.number().int().min(1).max(7)).optional(),
+      sortOrder: z.number().int().optional(),
+      isActive: z.boolean().optional(),
+    }),
+    handler: async (args) => api("/api/publications/channels", { method: "PUT", body: args }),
+  },
+  {
+    name: "create_publication_channel",
+    description: "Add a new channel row to the publication calendar.",
+    inputSchema: z.object({
+      id: z.string().describe("kebab-case slug, e.g. 'battle-maps'"),
+      name: z.string(),
+      lang: z.string().optional(),
+      url: z.string().optional(),
+      targetDuration: z.string().optional(),
+      hint: z.string().optional(),
+      planWeekdays: z.array(z.number().int().min(1).max(7)).optional(),
+    }),
+    handler: async (args) => api("/api/publications/channels", { method: "POST", body: args }),
+  },
+]
+
 export const allTools: Tool[] = [
   ...financeTools,
   ...diaryTools,
   ...challengeTools,
   ...plannerTools,
+  ...publicationTools,
   ...metaTools,
 ]

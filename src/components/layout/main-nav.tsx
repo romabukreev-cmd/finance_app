@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { BarChart3, BookOpen, CalendarCheck, Home, List, LogOut, Settings } from "lucide-react"
+import { BarChart3, BookOpen, CalendarCheck, Clapperboard, Home, List, LogOut, Settings } from "lucide-react"
 import { ThemeToggle } from "@/components/theme/theme-toggle"
 import { cn } from "@/lib/utils"
 
@@ -25,6 +25,10 @@ const plannerNav = [
   { href: "/planner", label: "Планер", icon: CalendarCheck },
 ]
 
+const publicationsNav = [
+  { href: "/publications", label: "Публикации", icon: Clapperboard },
+]
+
 function useModuleNav() {
   const pathname = usePathname()
 
@@ -36,6 +40,10 @@ function useModuleNav() {
 
   if (pathname.startsWith("/planner")) {
     return { title: "Планер", items: plannerNav }
+  }
+
+  if (pathname.startsWith("/publications")) {
+    return { title: "Публикации", items: publicationsNav }
   }
 
   return { title: "Финансы", items: financeNav }

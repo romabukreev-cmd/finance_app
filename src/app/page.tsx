@@ -4,6 +4,7 @@ import Link from "next/link"
 import {
   BookOpen,
   CalendarCheck,
+  Clapperboard,
   Wallet,
 } from "lucide-react"
 import { ThemeToggle } from "@/components/theme/theme-toggle"
@@ -34,6 +35,14 @@ const modules = [
     gradient: "from-amber-500 to-orange-600",
     shadow: "shadow-amber-500/25",
   },
+  {
+    href: "/publications",
+    label: "Публикации",
+    description: "Календарь выхода роликов по каналам",
+    icon: Clapperboard,
+    gradient: "from-sky-500 to-blue-600",
+    shadow: "shadow-sky-500/25",
+  },
 ]
 
 export default function HomePage() {
@@ -52,7 +61,7 @@ export default function HomePage() {
         </p>
       </div>
 
-      <div className="grid w-full max-w-3xl gap-6 sm:grid-cols-3">
+      <div className="grid w-full max-w-5xl gap-6 sm:grid-cols-2 lg:grid-cols-4">
         {modules.map((mod) => {
           const Icon = mod.icon
           return (
