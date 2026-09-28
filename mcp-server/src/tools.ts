@@ -496,6 +496,12 @@ const publicationTools: Tool[] = [
     }),
     handler: async (args) => api("/api/publications/channels", { method: "POST", body: args }),
   },
+  {
+    name: "delete_publication_channel",
+    description: "Delete a channel row from the publication calendar together with all its marks. Irreversible — ask Roman first.",
+    inputSchema: z.object({ id: z.string() }),
+    handler: async (args) => api("/api/publications/channels", { method: "DELETE", body: args }),
+  },
 ]
 
 export const allTools: Tool[] = [

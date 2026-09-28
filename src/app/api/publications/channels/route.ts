@@ -46,3 +46,12 @@ export async function PUT(req: NextRequest) {
   if (!rows[0]) return NextResponse.json({ error: "Not found" }, { status: 404 })
   return NextResponse.json(mapChannel(rows[0]))
 }
+
+/** DELETE — удалить канал вместе с его клетками. Body: { id } */
+export async function DELETE(req: NextRequest) {
+  const { id } = await req.json()
+  if (!id) return NextResponse.json({ error: "id required" }, { status: 400 })
+  const { rowCount } = await query(`DELETE FROM pub_channels WHERE id=$1`, [id])
+  if (!rowCount) return NextResponse.json({ error: "Not found" }, { status: 404 })
+  return NextResponse.json({ ok: true })
+}

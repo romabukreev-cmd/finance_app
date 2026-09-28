@@ -1,8 +1,9 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { ChevronLeft, ChevronRight } from "lucide-react"
+import { ChevronLeft, ChevronRight, Settings2 } from "lucide-react"
 import { PageHeader } from "@/components/layout/page-header"
+import { ChannelsDialog } from "@/components/publications/channels-dialog"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import {
@@ -53,6 +54,7 @@ export default function PublicationsPage() {
   const [data, setData] = useState<PubCalendar | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [mode, setMode] = useState<Mode>("done")
+  const [channelsOpen, setChannelsOpen] = useState(false)
 
   const days = useMemo(
     () => Array.from({ length: WEEKS * 7 }, (_, i) => toKey(addDays(start, i))),
@@ -147,6 +149,10 @@ export default function PublicationsPage() {
             </Button>
             <Button variant="outline" size="icon" onClick={() => setStart((s) => addDays(s, 7))} title="Неделя вперёд">
               <ChevronRight className="h-4 w-4" />
+            </Button>
+            <Button variant="outline" onClick={() => setChannelsOpen(true)}>
+              <Settings2 className="mr-1 h-4 w-4" />
+              Каналы
             </Button>
           </>
         }
@@ -266,6 +272,13 @@ export default function PublicationsPage() {
           <p className="p-4 text-sm text-muted-foreground">Каналов пока нет.</p>
         ) : null}
       </div>
+
+      <ChannelsDialog
+        open={channelsOpen}
+        onOpenChange={setChannelsOpen}
+        channels={data?.channels ?? []}
+        onChanged={load}
+      />
 
       <div className="mt-4 flex flex-wrap gap-4 text-sm text-muted-foreground">
         <span className="flex items-center gap-2"><span className="h-4 w-4 rounded bg-muted" /> пусто</span>
